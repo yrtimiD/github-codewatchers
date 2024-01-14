@@ -1,0 +1,20 @@
+name: 'codeowners-commit-notify'
+description: ''
+author: 'Dmitry Gurovich'
+inputs:
+  # github-token:
+  #   description: The GitHub token used to create an authenticated client
+  #   default: ${{ secrets.GITHUB_TOKEN }}
+  #   required: true
+  sha-from:
+    description: 'TBD'
+    required: true
+  sha-to:
+    description: 'TBD'
+    required: true
+outputs:
+  notifications:
+    description: 'TBD'
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
