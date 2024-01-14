@@ -52284,7 +52284,7 @@ function resolveEmail(octokit, username) {
             }
         }
         catch (e) {
-            core.error(`Unable to resolve email for ${username}: ${e === null || e === void 0 ? void 0 : e.message}`);
+            core.notice(`Unable to resolve email for ${username}: ${e === null || e === void 0 ? void 0 : e.message}`);
         }
         return email !== null && email !== void 0 ? email : username;
     });

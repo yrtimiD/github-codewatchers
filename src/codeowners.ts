@@ -52,7 +52,7 @@ async function resolveEmail(octokit: Octokit, username: string): Promise<string>
 			core.debug(`Resolved to ${email}`);
 		}
 	} catch (e: any) {
-		core.error(`Unable to resolve email for ${username}: ${e?.message}`);
+		core.notice(`Unable to resolve email for ${username}: ${e?.message}`);
 	}
 
 	return email ?? username;
