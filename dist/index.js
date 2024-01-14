@@ -52194,6 +52194,29 @@ function wrappy (fn, cb) {
 
 "use strict";
 
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -52208,6 +52231,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.check = void 0;
+const core = __importStar(__nccwpck_require__(2186));
 const ignore_1 = __importDefault(__nccwpck_require__(1230));
 function parseCodeOwners(content) {
     let CO = {};
@@ -52223,6 +52247,7 @@ function parseCodeOwners(content) {
 }
 function loadCodeowners(octokit, owner, repo, ref) {
     return __awaiter(this, void 0, void 0, function* () {
+        core.info(`Loading .github/CODEOWNERS file`);
         try {
             let { data: codeownersFile } = yield octokit.rest.repos.getContent({
                 owner: owner,
@@ -52232,18 +52257,21 @@ function loadCodeowners(octokit, owner, repo, ref) {
                 mediaType: { format: 'raw' }
             });
             console.dir(codeownersFile);
-            return parseCodeOwners(codeownersFile);
+            let parsed = parseCodeOwners(codeownersFile);
+            core.info(`Got ${parsed.length} owners`);
+            return parsed;
         }
         catch (e) {
             throw Error(`Can't download .github/CODEOWNERS. ${e === null || e === void 0 ? void 0 : e.message}`);
         }
     });
 }
-;
 function check(octokit, owner, repo, ref, shaFrom, shaTo) {
     return __awaiter(this, void 0, void 0, function* () {
         let CO = yield loadCodeowners(octokit, owner, repo, ref);
-        console.dir(CO);
+        core.debug(JSON.stringify(CO));
+        core.debug(JSON.stringify(CO, null, 2));
+        core.info(`Comparing ${shaFrom} with ${shaTo}...`);
         const { data } = yield octokit.rest.repos.compareCommits({
             owner: owner,
             repo: repo,
@@ -52252,6 +52280,7 @@ function check(octokit, owner, repo, ref, shaFrom, shaTo) {
         });
         const { commits, files, diff_url } = data;
         let fileNames = files === null || files === void 0 ? void 0 : files.map(f => f.filename);
+        core.info(`${fileNames === null || fileNames === void 0 ? void 0 : fileNames.length} was changed in ${commits.length} commits.`);
         let matches = [];
         CO.forEach(co => {
             let rules = (0, ignore_1.default)().add(co.matches);
@@ -52260,6 +52289,7 @@ function check(octokit, owner, repo, ref, shaFrom, shaTo) {
                 matches.push(co.owner);
             }
         });
+        core.info(`${matches.length} matches`);
         return matches;
     });
 }
@@ -52318,7 +52348,7 @@ function main() {
         let shaFrom = core.getInput('sha-from', { required: true });
         let shaTo = core.getInput('sha-to', { required: true });
         let octokit = new action_1.Octokit();
-        yield testConnection(octokit);
+        // await testConnection(octokit);
         let matches = yield (0, codeowners_1.check)(octokit, owner, repo, ref, shaFrom, shaTo);
         core.setOutput('notifications', matches);
     });

@@ -11,7 +11,7 @@ export async function main(): Promise<void> {
 	let shaTo = core.getInput('sha-to', { required: true });
 
 	let octokit = new Octokit();
-	await testConnection(octokit);
+	// await testConnection(octokit);
 	let matches = await check(octokit, owner, repo, ref, shaFrom, shaTo);
 	core.setOutput('notifications', matches);
 }

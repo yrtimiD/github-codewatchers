@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import * as core from '@actions/core';
 import ignore from 'ignore';
 
 type CodeOwner = { owner: string, matches: string[] };
@@ -15,6 +16,7 @@ function parseCodeOwners(content: string): CodeOwner[] {
 }
 
 async function loadCodeowners(octokit: Octokit, owner: string, repo: string, ref: string): Promise<CodeOwner[]> {
+	core.info(`Loading .github/CODEOWNERS file`);
 	try {
 		let { data: codeownersFile } = await octokit.rest.repos.getContent({
 			owner: owner,
@@ -24,16 +26,20 @@ async function loadCodeowners(octokit: Octokit, owner: string, repo: string, ref
 			mediaType: { format: 'raw' }
 		});
 		console.dir(codeownersFile);
-		return parseCodeOwners(codeownersFile as unknown as string);
+		let parsed = parseCodeOwners(codeownersFile as unknown as string);
+		core.info(`Got ${parsed.length} owners`);
+		return parsed;
 	} catch (e: any) {
 		throw Error(`Can't download .github/CODEOWNERS. ${e?.message}`);
 	}
-};
+}
 
 export async function check(octokit: Octokit, owner: string, repo: string, ref: string, shaFrom: string, shaTo: string) {
 	let CO = await loadCodeowners(octokit, owner, repo, ref);
-	console.dir(CO);
+	core.debug(JSON.stringify(CO));
+	core.debug(JSON.stringify(CO, null, 2));
 
+	core.info(`Comparing ${shaFrom} with ${shaTo}...`);
 	const { data } = await octokit.rest.repos.compareCommits({
 		owner: owner,
 		repo: repo,
@@ -42,6 +48,7 @@ export async function check(octokit: Octokit, owner: string, repo: string, ref: 
 	});
 	const { commits, files, diff_url } = data;
 	let fileNames = files?.map(f => f.filename);
+	core.info(`${fileNames?.length} was changed in ${commits.length} commits.`);
 
 	let matches: string[] = [];
 	CO.forEach(co => {
@@ -52,5 +59,6 @@ export async function check(octokit: Octokit, owner: string, repo: string, ref: 
 		}
 	});
 
+	core.info(`${matches.length} matches`);
 	return matches;
 }
