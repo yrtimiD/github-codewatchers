@@ -52207,11 +52207,8 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.check = exports.assertNotEmpty = void 0;
-const node_assert_1 = __importDefault(__nccwpck_require__(8061));
+exports.check = void 0;
 const ignore_1 = __importDefault(__nccwpck_require__(1230));
-function assertNotEmpty(value, message) { return node_assert_1.default.ok(typeof value === 'string' && value.length > 0, message); }
-exports.assertNotEmpty = assertNotEmpty;
 function parseCodeOwners(content) {
     let CO = {};
     let lines = content.split(/$/m).map(l => l.trim()).filter(l => !l.startsWith('#') && l.length > 0);
@@ -52440,14 +52437,6 @@ module.exports = require("https");
 
 "use strict";
 module.exports = require("net");
-
-/***/ }),
-
-/***/ 8061:
-/***/ ((module) => {
-
-"use strict";
-module.exports = require("node:assert");
 
 /***/ }),
 
