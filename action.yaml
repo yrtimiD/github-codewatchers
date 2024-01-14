@@ -4,7 +4,6 @@ author: 'Dmitry Gurovich'
 inputs:
   github_token:
     description: The GitHub token used to create an authenticated client
-    default: ${{ secrets.GITHUB_TOKEN }}
     required: true
   sha-from:
     description: 'TBD'
