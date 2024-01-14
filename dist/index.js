@@ -52256,7 +52256,7 @@ function loadCodeowners(octokit, owner, repo, ref) {
                 path: '.github/CODEOWNERS',
                 mediaType: { format: 'raw' }
             });
-            console.dir(codeownersFile);
+            core.debug(codeownersFile);
             let parsed = parseCodeOwners(codeownersFile);
             core.info(`Got ${parsed.length} owners`);
             return parsed;
@@ -52280,7 +52280,7 @@ function check(octokit, owner, repo, ref, shaFrom, shaTo) {
         });
         const { commits, files, diff_url } = data;
         let fileNames = files === null || files === void 0 ? void 0 : files.map(f => f.filename);
-        core.info(`${fileNames === null || fileNames === void 0 ? void 0 : fileNames.length} was changed in ${commits.length} commits.`);
+        core.info(`${fileNames === null || fileNames === void 0 ? void 0 : fileNames.length} files were changed in ${commits.length} commits.`);
         let matches = [];
         CO.forEach(co => {
             let rules = (0, ignore_1.default)().add(co.matches);
@@ -52354,17 +52354,6 @@ function main() {
     });
 }
 exports.main = main;
-function testConnection(octokit) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            let { data: { login, email } } = yield octokit.rest.users.getAuthenticated();
-            console.log(`Authenticated as ${login} <${email}>`);
-        }
-        catch (e) {
-            throw Error(`Can't authenticate with github. ${e === null || e === void 0 ? void 0 : e.message}`);
-        }
-    });
-}
 main()
     .catch((e) => {
     console.error(e);

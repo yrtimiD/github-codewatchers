@@ -16,16 +16,6 @@ export async function main(): Promise<void> {
 	core.setOutput('notifications', matches);
 }
 
-async function testConnection(octokit: Octokit) {
-	try {
-		let { data: { login, email } } = await octokit.rest.users.getAuthenticated();
-		console.log(`Authenticated as ${login} <${email}>`);
-	}
-	catch (e: any) {
-		throw Error(`Can't authenticate with github. ${e?.message}`);
-	}
-}
-
 main()
 	.catch((e) => {
 		console.error(e);

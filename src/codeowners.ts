@@ -25,7 +25,7 @@ async function loadCodeowners(octokit: Octokit, owner: string, repo: string, ref
 			path: '.github/CODEOWNERS',
 			mediaType: { format: 'raw' }
 		});
-		console.dir(codeownersFile);
+		core.debug(codeownersFile as unknown as string);
 		let parsed = parseCodeOwners(codeownersFile as unknown as string);
 		core.info(`Got ${parsed.length} owners`);
 		return parsed;
@@ -48,7 +48,7 @@ export async function check(octokit: Octokit, owner: string, repo: string, ref: 
 	});
 	const { commits, files, diff_url } = data;
 	let fileNames = files?.map(f => f.filename);
-	core.info(`${fileNames?.length} was changed in ${commits.length} commits.`);
+	core.info(`${fileNames?.length} files were changed in ${commits.length} commits.`);
 
 	let matches: string[] = [];
 	CO.forEach(co => {
