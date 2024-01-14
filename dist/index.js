@@ -52247,6 +52247,7 @@ function parseCodeOwners(content) {
 }
 function loadCodeowners(octokit, owner, repo, ref) {
     return __awaiter(this, void 0, void 0, function* () {
+        let CO = [];
         core.info(`Loading .github/CODEOWNERS file`);
         try {
             let { data: codeownersFile } = yield octokit.rest.repos.getContent({
@@ -52257,13 +52258,35 @@ function loadCodeowners(octokit, owner, repo, ref) {
                 mediaType: { format: 'raw' }
             });
             core.debug(codeownersFile);
-            let parsed = parseCodeOwners(codeownersFile);
-            core.info(`Got ${parsed.length} owners`);
-            return parsed;
+            CO = parseCodeOwners(codeownersFile);
+            core.info(`Got ${CO.length} owners`);
         }
         catch (e) {
             throw Error(`Can't download .github/CODEOWNERS. ${e === null || e === void 0 ? void 0 : e.message}`);
         }
+        core.info(`Resolving owners emails...`);
+        for (let co of CO) {
+            co.owner = yield resolveEmail(octokit, co.owner);
+        }
+        return CO;
+    });
+}
+function resolveEmail(octokit, username) {
+    return __awaiter(this, void 0, void 0, function* () {
+        core.debug(`Resolving email for ${username}...`);
+        let email = null;
+        try {
+            if (username.startsWith('@')) {
+                username = username.substring(1);
+                let { data } = yield octokit.users.getByUsername({ username: username });
+                email = data.email;
+                core.debug(`Resolved to ${email}`);
+            }
+        }
+        catch (e) {
+            core.error(`Unable to resolve email for ${username}: ${e === null || e === void 0 ? void 0 : e.message}`);
+        }
+        return email !== null && email !== void 0 ? email : username;
     });
 }
 function check(octokit, owner, repo, ref, shaFrom, shaTo) {

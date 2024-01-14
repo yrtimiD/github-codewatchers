@@ -16,6 +16,7 @@ function parseCodeOwners(content: string): CodeOwner[] {
 }
 
 async function loadCodeowners(octokit: Octokit, owner: string, repo: string, ref: string): Promise<CodeOwner[]> {
+	let CO: CodeOwner[] = [];
 	core.info(`Loading .github/CODEOWNERS file`);
 	try {
 		let { data: codeownersFile } = await octokit.rest.repos.getContent({
@@ -26,12 +27,35 @@ async function loadCodeowners(octokit: Octokit, owner: string, repo: string, ref
 			mediaType: { format: 'raw' }
 		});
 		core.debug(codeownersFile as unknown as string);
-		let parsed = parseCodeOwners(codeownersFile as unknown as string);
-		core.info(`Got ${parsed.length} owners`);
-		return parsed;
+		CO = parseCodeOwners(codeownersFile as unknown as string);
+		core.info(`Got ${CO.length} owners`);
 	} catch (e: any) {
 		throw Error(`Can't download .github/CODEOWNERS. ${e?.message}`);
 	}
+
+	core.info(`Resolving owners emails...`);
+	for (let co of CO) {
+		co.owner = await resolveEmail(octokit, co.owner);
+	}
+
+	return CO;
+}
+
+async function resolveEmail(octokit: Octokit, username: string): Promise<string> {
+	core.debug(`Resolving email for ${username}...`);
+	let email: string | null = null;
+	try {
+		if (username.startsWith('@')) {
+			username = username.substring(1);
+			let { data } = await octokit.users.getByUsername({ username: username });
+			email = data.email;
+			core.debug(`Resolved to ${email}`);
+		}
+	} catch (e: any) {
+		core.error(`Unable to resolve email for ${username}: ${e?.message}`);
+	}
+
+	return email ?? username;
 }
 
 export async function check(octokit: Octokit, owner: string, repo: string, ref: string, shaFrom: string, shaTo: string) {
