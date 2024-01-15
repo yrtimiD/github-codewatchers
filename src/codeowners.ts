@@ -60,11 +60,13 @@ async function resolveEmail(octokit: Octokit, username: string): Promise<string>
 
 type CompareCommitsData = RestEndpointMethodTypes["repos"]["compareCommits"]["response"]["data"];
 function formatPush(commits: CompareCommitsData["commits"], files: CompareCommitsData["files"], diff_url: string): string {
-	return `
-	${commits.map(({ commit: c }) => `${c.author?.name}: ${c.message} ${c.url}`).join('\n')}
-
-	${files?.map((f) => f.filename).join('\n')}
-	`;
+	return [
+		'## Commits:',
+		...commits.map(({ commit: c }) => `* [${c.author?.name}: ${c.message}](${c.url})`),
+		'',
+		'## Files:',
+		...files.map((f) => `* [${f.filename}](${f.contents_url})`),
+	].join('\n');
 }
 
 export type Notif = { owner: string, message: string };
@@ -85,6 +87,8 @@ export async function check(octokit: Octokit, owner: string, repo: string, ref: 
 	core.info(`${fileNames?.length} files were changed in ${commits.length} commits.`);
 
 	let message = formatPush(commits, files, diff_url);
+	core.debug(message);
+
 	let notif: Notif[] = [];
 	CO.forEach(co => {
 		let rules = ignore().add(co.matches);

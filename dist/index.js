@@ -52290,11 +52290,13 @@ function resolveEmail(octokit, username) {
     });
 }
 function formatPush(commits, files, diff_url) {
-    return `
-	${commits.map(({ commit: c }) => { var _a; return `${(_a = c.author) === null || _a === void 0 ? void 0 : _a.name}: ${c.message} ${c.url}`; }).join('\n')}
-
-	${files === null || files === void 0 ? void 0 : files.map((f) => f.filename).join('\n')}
-	`;
+    return [
+        '## Commits:',
+        ...commits.map(({ commit: c }) => { var _a; return `* [${(_a = c.author) === null || _a === void 0 ? void 0 : _a.name}: ${c.message}](${c.url})`; }),
+        '',
+        '## Files:',
+        ...files.map((f) => `* [${f.filename}](${f.contents_url})`),
+    ].join('\n');
 }
 function check(octokit, owner, repo, ref, shaFrom, shaTo) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -52312,6 +52314,7 @@ function check(octokit, owner, repo, ref, shaFrom, shaTo) {
         let fileNames = files === null || files === void 0 ? void 0 : files.map(f => f.filename);
         core.info(`${fileNames === null || fileNames === void 0 ? void 0 : fileNames.length} files were changed in ${commits.length} commits.`);
         let message = formatPush(commits, files, diff_url);
+        core.debug(message);
         let notif = [];
         CO.forEach(co => {
             let rules = (0, ignore_1.default)().add(co.matches);
