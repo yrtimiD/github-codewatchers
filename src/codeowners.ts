@@ -59,14 +59,26 @@ async function resolveEmail(octokit: Octokit, username: string): Promise<string>
 }
 
 type CompareCommitsData = RestEndpointMethodTypes["repos"]["compareCommits"]["response"]["data"];
-function formatPush(commits: CompareCommitsData["commits"], files: CompareCommitsData["files"], diff_url: string): string {
+function formatPush(owner: string, repo: string, ref: string, commits: CompareCommitsData["commits"], files: CompareCommitsData["files"], diff_url: string): string {
+	let shortSha = (sha: string) => sha.substring(0, 8);
 	return [
-		'## Commits:',
-		...commits.map(({ commit: c }) => `* [${c.author?.name}: ${c.message}](${c.url})`),
-		'',
-		'## Files:',
-		...files.map((f) => `* [${f.filename}](${f.contents_url})`),
-	].join('\n');
+		'<html>',
+		'<head><style>',
+		'ul {list-style: none;} .sha {font-family: monospace;}',
+		'</style></head>',
+		'<body>',
+		`<h2>${commits[0]?.commit?.author?.name} pushed new changes to ${owner}/${repo} [${ref}]</h2>`,
+		'<h3>Files</h3>',
+		'<ul>',
+		...files.map((f) => `<li><a href="${f.blob_url}">${f.filename}</a></li>`),
+		'</ul>',
+		'<br/>',
+		'<h3>Commits</h3>',
+		'<ul>',
+		...commits.map((c) => `<li><a href="${c.html_url}" class="sha">${shortSha(c.sha)}</a>: ${c.commit.message}</li>`),
+		'</ul>',
+		'</body></html>'
+	].join('');
 }
 
 export type Notif = { owner: string, message: string };
@@ -86,7 +98,7 @@ export async function check(octokit: Octokit, owner: string, repo: string, ref: 
 	let fileNames = files?.map(f => f.filename);
 	core.info(`${fileNames?.length} files were changed in ${commits.length} commits.`);
 
-	let message = formatPush(commits, files, diff_url);
+	let message = formatPush(owner, repo, ref, commits, files, diff_url);
 	core.debug(message);
 
 	let notif: Notif[] = [];
