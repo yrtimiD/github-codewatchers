@@ -1,4 +1,4 @@
-import { Octokit } from '@octokit/rest';
+import { Octokit, RestEndpointMethodTypes } from '@octokit/rest';
 import * as core from '@actions/core';
 import ignore from 'ignore';
 
@@ -58,7 +58,17 @@ async function resolveEmail(octokit: Octokit, username: string): Promise<string>
 	return email ?? username;
 }
 
-export async function check(octokit: Octokit, owner: string, repo: string, ref: string, shaFrom: string, shaTo: string) {
+type CompareCommitsData = RestEndpointMethodTypes["repos"]["compareCommits"]["response"]["data"];
+function formatPush(commits: CompareCommitsData["commits"], files: CompareCommitsData["files"], diff_url: string): string {
+	return `
+	${commits.map(({ commit: c }) => `${c.author?.name}: ${c.message} ${c.url}`).join('\n')}
+
+	${files?.map((f) => f.filename).join('\n')}
+	`;
+}
+
+export type Notif = { owner: string, message: string };
+export async function check(octokit: Octokit, owner: string, repo: string, ref: string, shaFrom: string, shaTo: string): Promise<Notif[]> {
 	let CO = await loadCodeowners(octokit, owner, repo, ref);
 	core.debug(JSON.stringify(CO));
 	core.debug(JSON.stringify(CO, null, 2));
@@ -74,15 +84,17 @@ export async function check(octokit: Octokit, owner: string, repo: string, ref: 
 	let fileNames = files?.map(f => f.filename);
 	core.info(`${fileNames?.length} files were changed in ${commits.length} commits.`);
 
-	let matches: string[] = [];
+	let message = formatPush(commits, files, diff_url);
+	let notif: Notif[] = [];
 	CO.forEach(co => {
 		let rules = ignore().add(co.matches);
 		let hasMatch = fileNames?.some(f => rules.ignores(f));
 		if (hasMatch) {
-			matches.push(co.owner);
+			notif.push({ owner: co.owner, message: message });
 		}
 	});
 
-	core.info(`${matches.length} matches`);
-	return matches;
+	core.info(`${notif.length} matches`);
+
+	return notif;
 }

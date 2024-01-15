@@ -52289,6 +52289,13 @@ function resolveEmail(octokit, username) {
         return email !== null && email !== void 0 ? email : username;
     });
 }
+function formatPush(commits, files, diff_url) {
+    return `
+	${commits.map(({ commit: c }) => { var _a; return `${(_a = c.author) === null || _a === void 0 ? void 0 : _a.name}: ${c.message} ${c.url}`; }).join('\n')}
+
+	${files === null || files === void 0 ? void 0 : files.map((f) => f.filename).join('\n')}
+	`;
+}
 function check(octokit, owner, repo, ref, shaFrom, shaTo) {
     return __awaiter(this, void 0, void 0, function* () {
         let CO = yield loadCodeowners(octokit, owner, repo, ref);
@@ -52304,16 +52311,17 @@ function check(octokit, owner, repo, ref, shaFrom, shaTo) {
         const { commits, files, diff_url } = data;
         let fileNames = files === null || files === void 0 ? void 0 : files.map(f => f.filename);
         core.info(`${fileNames === null || fileNames === void 0 ? void 0 : fileNames.length} files were changed in ${commits.length} commits.`);
-        let matches = [];
+        let message = formatPush(commits, files, diff_url);
+        let notif = [];
         CO.forEach(co => {
             let rules = (0, ignore_1.default)().add(co.matches);
             let hasMatch = fileNames === null || fileNames === void 0 ? void 0 : fileNames.some(f => rules.ignores(f));
             if (hasMatch) {
-                matches.push(co.owner);
+                notif.push({ owner: co.owner, message: message });
             }
         });
-        core.info(`${matches.length} matches`);
-        return matches;
+        core.info(`${notif.length} matches`);
+        return notif;
     });
 }
 exports.check = check;
@@ -52372,8 +52380,8 @@ function main() {
         let shaTo = core.getInput('sha-to', { required: true });
         let octokit = new action_1.Octokit();
         // await testConnection(octokit);
-        let matches = yield (0, codeowners_1.check)(octokit, owner, repo, ref, shaFrom, shaTo);
-        core.setOutput('notifications', matches);
+        let notifications = yield (0, codeowners_1.check)(octokit, owner, repo, ref, shaFrom, shaTo);
+        core.setOutput('notifications', notifications);
     });
 }
 exports.main = main;

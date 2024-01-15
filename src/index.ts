@@ -12,8 +12,8 @@ export async function main(): Promise<void> {
 
 	let octokit = new Octokit();
 	// await testConnection(octokit);
-	let matches = await check(octokit, owner, repo, ref, shaFrom, shaTo);
-	core.setOutput('notifications', matches);
+	let notifications = await check(octokit, owner, repo, ref, shaFrom, shaTo);
+	core.setOutput('notifications', notifications);
 }
 
 main()
