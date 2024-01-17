@@ -11,7 +11,7 @@ export type Context = {
 }
 
 type CodeOwner = { owner: string, matches: string[] };
-function parseCodeOwners(content: string): CodeOwner[] {
+function parseCodeWatchers(content: string): CodeOwner[] {
 	let CO: { [name: string]: CodeOwner } = {};
 	let lines = content.split(/$/m).map(l => l.trim()).filter(l => !l.startsWith('#') && l.length > 0);
 	lines.forEach(line => {
@@ -23,23 +23,23 @@ function parseCodeOwners(content: string): CodeOwner[] {
 	return Object.values(CO);
 }
 
-async function loadCodeowners(octokit: Octokit, context: Context, codeowners: string): Promise<CodeOwner[]> {
+async function loadCodewatchers(octokit: Octokit, context: Context, codewatchers: string): Promise<CodeOwner[]> {
 	let { owner, repo, ref } = context;
 	let CO: CodeOwner[] = [];
-	core.info(`Loading ${codeowners} file from ${ref}...`);
+	core.info(`Loading "${codewatchers}" file from ${ref}...`);
 	try {
 		let { data: codeownersFile } = await octokit.rest.repos.getContent({
 			owner: owner,
 			repo: repo,
 			ref: ref,
-			path: codeowners,
+			path: codewatchers,
 			mediaType: { format: 'raw' }
 		});
 		core.debug(codeownersFile as unknown as string);
-		CO = parseCodeOwners(codeownersFile as unknown as string);
+		CO = parseCodeWatchers(codeownersFile as unknown as string);
 		core.info(`Got ${CO.length} owners`);
 	} catch (e: any) {
-		throw Error(`Can't download ${codeowners} file. ${e?.message}`);
+		throw Error(`Can't download "${codewatchers}" file. ${e?.message}`);
 	}
 
 	core.info(`Resolving owners emails...`);
@@ -97,7 +97,7 @@ function composeMessage(context: Context, commits: CompareCommitsData["commits"]
 
 export async function check(octokit: Octokit, context: Context, codeowners: string, shaFrom: string, shaTo: string): Promise<Notif[]> {
 	let { owner, repo } = context;
-	let CO = await loadCodeowners(octokit, context, codeowners);
+	let CO = await loadCodewatchers(octokit, context, codeowners);
 	core.debug(JSON.stringify(CO));
 	core.debug(JSON.stringify(CO, null, 2));
 

@@ -13,10 +13,10 @@ export async function main(): Promise<void> {
 
 	let shaFrom = core.getInput('sha-from', { required: true });
 	let shaTo = core.getInput('sha-to', { required: true });
-	let codeowners = core.getInput('codeowners', { required: false });
+	let codewatchers = core.getInput('codewatchers', { required: true });
 
 	let octokit = new Octokit();
-	let notifications = await check(octokit, context, codeowners, shaFrom, shaTo);
+	let notifications = await check(octokit, context, codewatchers, shaFrom, shaTo);
 	core.setOutput('notifications', notifications);
 }
 
