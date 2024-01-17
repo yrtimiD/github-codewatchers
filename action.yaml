@@ -5,16 +5,20 @@ inputs:
   GITHUB_TOKEN:
     description: 'The GitHub token used to create an authenticated client. Must have Metadata and Contents read permissions.'
     required: true
-  sha-from:
+  sha_from:
     description: 'The SHA of the most recent commit on ref before the push. (ex. github.event.before)'
     required: true
-  sha-to:
+  sha_to:
     description: 'The SHA of the most recent commit on ref after the push. (ex. github.event.after)'
     required: true
   codewatchers:
     description: 'Location of the CODEWATCHERS file'
     required: false
     default: '.github/CODEWATCHERS'
+  ignore_own:
+    descriptions: 'Prevents notifications for own commits'
+    required: false
+    default: true
 outputs:
   notifications:
     description: 'Array of notification objects each one has next fields: "to" (string), "subj" (string) and "body" (string) '

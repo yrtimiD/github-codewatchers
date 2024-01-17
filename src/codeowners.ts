@@ -23,8 +23,10 @@ function parseCodeWatchers(content: string): CodeOwner[] {
 	return Object.values(CO);
 }
 
-async function loadCodewatchers(octokit: Octokit, context: Context, codewatchers: string): Promise<CodeOwner[]> {
+async function loadCodewatchers(octokit: Octokit, context: Context, options: Options): Promise<CodeOwner[]> {
 	let { owner, repo, ref } = context;
+	let { codewatchers } = options;
+
 	let CO: CodeOwner[] = [];
 	core.info(`Loading "${codewatchers}" file from ${ref}...`);
 	try {
@@ -95,9 +97,13 @@ function composeMessage(context: Context, commits: CompareCommitsData["commits"]
 	};
 }
 
-export async function check(octokit: Octokit, context: Context, codeowners: string, shaFrom: string, shaTo: string): Promise<Notif[]> {
+export type Options = {
+	codewatchers: string, shaFrom: string, shaTo: string, ignoreOwn: boolean
+};
+export async function check(octokit: Octokit, context: Context, options: Options): Promise<Notif[]> {
 	let { owner, repo } = context;
-	let CO = await loadCodewatchers(octokit, context, codeowners);
+	let { shaFrom, shaTo, ignoreOwn } = options;
+	let CO = await loadCodewatchers(octokit, context, options);
 	core.debug(JSON.stringify(CO));
 	core.debug(JSON.stringify(CO, null, 2));
 
@@ -118,7 +124,7 @@ export async function check(octokit: Octokit, context: Context, codeowners: stri
 
 	let notif: Notif[] = [];
 	CO.forEach(co => {
-		if (commits.every(commit => co.owner === commit.commit.author.email)) return;
+		if (ignoreOwn && commits.every(commit => co.owner === commit.commit.author.email)) return;
 		let rules = ignore().add(co.matches);
 		let hasMatch = fileNames?.some(f => rules.ignores(f));
 		if (hasMatch) {
