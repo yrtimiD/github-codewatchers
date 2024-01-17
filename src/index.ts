@@ -3,7 +3,7 @@ import { Octokit } from '@octokit/action';
 import { Context, check } from './codeowners';
 
 export async function main(): Promise<void> {
-	let [owner, repo] = process.env.GITHUB_REPOSITORY!.split('/')
+	let [owner, repo] = process.env.GITHUB_REPOSITORY.split('/')
 	let context: Context = {
 		owner,
 		repo,

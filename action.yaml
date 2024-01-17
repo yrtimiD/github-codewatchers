@@ -1,4 +1,4 @@
-name: 'Codeowners Commit Notify'
+name: 'Codewatchers Commit Notifier'
 description: 'Prepares commit notifications by matching changed files with CODEOWNERS rules'
 author: 'Dmitry Gurovich <yrtimid@gmail.com>'
 inputs:
@@ -12,9 +12,9 @@ inputs:
     description: 'The SHA of the most recent commit on ref after the push. (ex. github.event.after)'
     required: true
   codeowners:
-    description: 'Location of the CODEOWNERS file'
+    description: 'Location of the CODEWATCHERS file'
     required: false
-    default: '.github/CODEOWNERS'
+    default: '.github/CODEWATCHERS'
 outputs:
   notifications:
     description: 'Array of notification objects each one has next fields: "to" (string), "subj" (string) and "body" (string) '

@@ -1,7 +1,7 @@
 {
-  "name": "github-codeowners-commit-notify",
+  "name": "github-codewatchers",
   "version": "1.0.0",
-  "description": "GitHub action which prepares commit notifications by matching changed files with CODEOWNERS rules",
+  "description": "GitHub action which prepares commit notifications by matching changed files with CODEWATCHERS rules",
   "main": "dist/index.js",
   "scripts": {
     "test": "ts-node -r dotenv/config src/index.ts",
@@ -20,6 +20,7 @@
     "@types/node": "^20.11.0",
     "@vercel/ncc": "^0.38.1",
     "dotenv": "^16.3.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }
 }
