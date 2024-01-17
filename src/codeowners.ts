@@ -2,6 +2,14 @@ import { Octokit, RestEndpointMethodTypes } from '@octokit/rest';
 import * as core from '@actions/core';
 import ignore from 'ignore';
 
+
+export type Context = {
+	owner: string,
+	repo: string,
+	ref: string,
+	refName: string,
+}
+
 type CodeOwner = { owner: string, matches: string[] };
 function parseCodeOwners(content: string): CodeOwner[] {
 	let CO: { [name: string]: CodeOwner } = {};
@@ -15,22 +23,23 @@ function parseCodeOwners(content: string): CodeOwner[] {
 	return Object.values(CO);
 }
 
-async function loadCodeowners(octokit: Octokit, owner: string, repo: string, ref: string): Promise<CodeOwner[]> {
+async function loadCodeowners(octokit: Octokit, context: Context, codeowners: string): Promise<CodeOwner[]> {
+	let { owner, repo, ref } = context;
 	let CO: CodeOwner[] = [];
-	core.info(`Loading .github/CODEOWNERS file`);
+	core.info(`Loading ${codeowners} file from ${ref}...`);
 	try {
 		let { data: codeownersFile } = await octokit.rest.repos.getContent({
 			owner: owner,
 			repo: repo,
 			ref: ref,
-			path: '.github/CODEOWNERS',
+			path: codeowners,
 			mediaType: { format: 'raw' }
 		});
 		core.debug(codeownersFile as unknown as string);
 		CO = parseCodeOwners(codeownersFile as unknown as string);
 		core.info(`Got ${CO.length} owners`);
 	} catch (e: any) {
-		throw Error(`Can't download .github/CODEOWNERS. ${e?.message}`);
+		throw Error(`Can't download ${codeowners} file. ${e?.message}`);
 	}
 
 	core.info(`Resolving owners emails...`);
@@ -58,32 +67,37 @@ async function resolveEmail(octokit: Octokit, username: string): Promise<string>
 	return email ?? username;
 }
 
+export type Notif = { to: string, subj: string, body: string };
 type CompareCommitsData = RestEndpointMethodTypes["repos"]["compareCommits"]["response"]["data"];
-function formatPush(owner: string, repo: string, ref: string, commits: CompareCommitsData["commits"], files: CompareCommitsData["files"], diff_url: string): string {
+function composeMessage(context: Context, commits: CompareCommitsData["commits"], files: CompareCommitsData["files"], diff_url: string) {
+	let { owner, repo, refName } = context;
 	let shortSha = (sha: string) => sha.substring(0, 8);
-	return [
-		'<html>',
-		'<head><style>',
-		'ul {list-style: none;} .sha {font-family: monospace;}',
-		'</style></head>',
-		'<body>',
-		`<h2>${commits[0]?.commit?.author?.name} pushed new changes to ${owner}/${repo} [${ref}]</h2>`,
-		'<h3>Files</h3>',
-		'<ul>',
-		...files.map((f) => `<li><a href="${f.blob_url}">${f.filename}</a></li>`),
-		'</ul>',
-		'<br/>',
-		'<h3>Commits</h3>',
-		'<ul>',
-		...commits.map((c) => `<li><a href="${c.html_url}" class="sha">${shortSha(c.sha)}</a>: ${c.commit.message}</li>`),
-		'</ul>',
-		'</body></html>'
-	].join('');
+	return {
+		subj: `${commits[0]?.commit?.author?.name} pushed to the ${owner}/${repo} [${refName}]`,
+		body: [
+			'<html>',
+			'<head><style>',
+			'ul {list-style: none;} .sha {font-family: monospace;}',
+			'</style></head>',
+			'<body>',
+			`<h2>${commits[0]?.commit?.author?.name} pushed new changes to ${owner}/${repo} [${refName}]</h2>`,
+			'<h3>Files</h3>',
+			'<ul>',
+			...files.map((f) => `<li><a href="${f.blob_url}">${f.filename}</a></li>`),
+			'</ul>',
+			'<br/>',
+			'<h3>Commits</h3>',
+			'<ul>',
+			...commits.map((c) => `<li><a href="${c.html_url}" class="sha">${shortSha(c.sha)}</a>: ${c.commit.message.split(/$/m)[0]}</li>`),
+			'</ul>',
+			'</body></html>'
+		].join('')
+	};
 }
 
-export type Notif = { owner: string, message: string };
-export async function check(octokit: Octokit, owner: string, repo: string, ref: string, shaFrom: string, shaTo: string): Promise<Notif[]> {
-	let CO = await loadCodeowners(octokit, owner, repo, ref);
+export async function check(octokit: Octokit, context: Context, codeowners: string, shaFrom: string, shaTo: string): Promise<Notif[]> {
+	let { owner, repo } = context;
+	let CO = await loadCodeowners(octokit, context, codeowners);
 	core.debug(JSON.stringify(CO));
 	core.debug(JSON.stringify(CO, null, 2));
 
@@ -98,19 +112,21 @@ export async function check(octokit: Octokit, owner: string, repo: string, ref: 
 	let fileNames = files?.map(f => f.filename);
 	core.info(`${fileNames?.length} files were changed in ${commits.length} commits.`);
 
-	let message = formatPush(owner, repo, ref, commits, files, diff_url);
-	core.debug(message);
+	let message = composeMessage(context, commits, files, diff_url);
+	core.debug(message.subj);
+	core.debug(message.body);
 
 	let notif: Notif[] = [];
 	CO.forEach(co => {
+		if (commits.every(commit => co.owner === commit.commit.author.email)) return;
 		let rules = ignore().add(co.matches);
 		let hasMatch = fileNames?.some(f => rules.ignores(f));
 		if (hasMatch) {
-			notif.push({ owner: co.owner, message: message });
+			notif.push({ to: co.owner, subj: message.subj, body: message.body });
 		}
 	});
 
-	core.info(`${notif.length} matches`);
+	core.info(`Created ${notif.length} notifications`);
 
 	return notif;
 }

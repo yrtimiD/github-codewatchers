@@ -1,14 +1,14 @@
 {
   "name": "github-codeowners-commit-notify",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "GitHub action which prepares commit notifications by matching changed files with CODEOWNERS rules",
+  "main": "dist/index.js",
   "scripts": {
     "test": "ts-node -r dotenv/config src/index.ts",
     "build": "ncc build src/index.ts --license LICENSE"
   },
   "keywords": [],
-  "author": "",
+  "author": "Dmitry Gurovich <yrtimid@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.10.1",

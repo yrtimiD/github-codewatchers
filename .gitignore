@@ -9,9 +9,6 @@ node_modules/
 # TypeScript cache
 *.tsbuildinfo
 
-# Output of 'npm pack'
-*.tgz
-
 # dotenv environment variable files
 .env
 .env.development.local

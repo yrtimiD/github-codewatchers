@@ -1,19 +1,23 @@
-name: 'codeowners-commit-notify'
-description: ''
-author: 'Dmitry Gurovich'
+name: 'Codeowners Commit Notify'
+description: 'Prepares commit notifications by matching changed files with CODEOWNERS rules'
+author: 'Dmitry Gurovich <yrtimid@gmail.com>'
 inputs:
-  github_token:
-    description: The GitHub token used to create an authenticated client
+  GITHUB_TOKEN:
+    description: 'The GitHub token used to create an authenticated client. Must have Metadata and Contents read permissions.'
     required: true
   sha-from:
-    description: 'TBD'
+    description: 'The SHA of the most recent commit on ref before the push. (ex. github.event.before)'
     required: true
   sha-to:
-    description: 'TBD'
+    description: 'The SHA of the most recent commit on ref after the push. (ex. github.event.after)'
     required: true
+  codeowners:
+    description: 'Location of the CODEOWNERS file'
+    required: false
+    default: '.github/CODEOWNERS'
 outputs:
   notifications:
-    description: 'TBD'
+    description: 'Array of notification objects each one has next fields: "to" (string), "subj" (string) and "body" (string) '
 runs:
   using: 'node20'
   main: 'dist/index.js'
