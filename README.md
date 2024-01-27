@@ -1,19 +1,92 @@
 # github-codewatchers Commit notifier
 
-GitHub Action which helps to send notification about specified changed files to these files owners.
+GitHub Action which helps sending notification about changed files to subscribers.
 
-The action accepts push `from` and `to` commits and checks them against .github/CODEWATCHERS file. If any commit has matched files - the action outputs array of watchers (as [GitHub API User](https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-a-user)) and commit (as [GitHub API Commit](https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#get-a-commit)) object.
+## Configuration
+Subscriptions are managed in a [CODEOWNERS](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners) like file where file patterns are associated with users. You can use standard `.github/CODEOWNERS` file or make a new one called `.github/CODEWATCHERS` (can use any name) to have a better configuration flexibility.
 
-## Usage
-See example workflow in [examples](examples/)
+### Inputs
+* `GITHUB_TOKEN` - token for interaction with GitHub API, standard GITHUB_TOKEN secret provided to each workflow is good enough
+* `codewatchers` - location of the subscriptions file, default is `.github/CODEWATCHERS`
+* `ignore_own` - toggles if committer will get notifications for own commits (boolean, default is `true`)
+* `sha_from` and `sha_to` - commits range to analize. Usually these are taken from the [push](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push) event (see example below)
 
-## Local testing
+Action doesn't requires repository checkout, all operations are done via GitHub API
+
+```yaml
+name: Commit Notify
+on: push
+jobs:
+  get-notifications:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check commits
+        id: check
+        uses: yrtimiD/github-codewatchers@v1
+        with:
+           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+           codewatchers: '.github/CODEWATCHERS'
+           ignore_own: true
+           sha_from: ${{ github.event.before }}
+           sha_to: ${{ github.event.after }}
+    outputs:
+      notifications: ${{ steps.check.outputs.notifications }}
+```
+
+### Output
+If any commit has files matched to subsciption rules - action will output an array of watchers (as [GitHub API User](https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-a-user)) and commit (as [GitHub API Commit](https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#get-a-commit)) object.
+
+Simplified version of output looks next (there are more fields):
+```json
+{
+  "commit": {
+    "sha": "5fd3a8a657f7d78b8e8cdb2747585b24607f7e05",
+    "commit": {
+      "message": "testing"
+    },
+    "html_url": "https://github.com/example/example/commit/5fd3a8a657f7d78b8e8cdb2747585b24607f7e05",
+    "author": {
+      "login": "somecommitter"
+    },
+    "committer": {
+      "login": "somecommitter"
+    },
+    "stats": {
+      "total": 2,
+      "additions": 1,
+      "deletions": 1
+    },
+    "files": [
+      {
+        "filename": "some/file/was/changed.txt",
+        "status": "modified",
+        "additions": 1,
+        "deletions": 1,
+        "changes": 2
+      }
+    ]
+  },
+  "watchers": [
+    {
+      "login": "somewatcher",
+      "name": "Some Watcher",
+      "email": "Some.Watcher@example.com"
+    }
+  ]
+}
+```
+
+## Usage Example
+See full example workflow in [examples](examples/)
+
+## Contribution
+### Local testing
 Prepare `.env` file in the repo root with next content (replace <xxx> placeholders with actual values):
 ```
 GITHUB_REPOSITORY="<OWNER/REPO>"
 GITHUB_REF="refs/heads/<BRANCH>"
 GITHUB_REF_NAME="<BRANCH>"
-GITHUB_TOKEN="<GITHUB PAT TOKEN WITH COMMIT READ PERMISSIONS>"
+GITHUB_TOKEN="<GITHUB PAT TOKEN WITH REPO AND USERS READ PERMISSIONS>"
 GITHUB_ACTION='.'
 INPUT_SHA_FROM=<FROM COMMIT>
 INPUT_SHA_TO=<TO COMMIT>
@@ -21,10 +94,10 @@ INPUT_CODEWATCHERS=".github/CODEWATCHERS"
 INPUT_IGNORE_OWN=false
 ```
 
-Run `npm install && npm test`
+Before first run `npm install`, and then `npm test`
 
 
-## Build and Commit
+### Build and Commit
 Ensure to run `npm run build` before commit to update `dist` folder.
 
 
