@@ -22,6 +22,9 @@ inputs:
 outputs:
   notifications:
     description: 'Array of notification objects each one has next fields: "to" (string), "subj" (string) and "body" (string) '
+branding:
+  icon: 'bell'
+  color: 'green'
 runs:
   using: 'node20'
   main: 'dist/index.js'
