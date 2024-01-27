@@ -1,6 +1,8 @@
 import * as core from '@actions/core';
 import { Octokit } from '@octokit/action';
-import { Context, Options, check } from './codeowners';
+import { Context, Options } from './types';
+import { check } from './match';
+
 
 export async function main(): Promise<void> {
 	let [owner, repo] = process.env.GITHUB_REPOSITORY.split('/')
@@ -9,6 +11,7 @@ export async function main(): Promise<void> {
 		repo,
 		ref: process.env.GITHUB_REF,
 		refName: process.env.GITHUB_REF_NAME,
+		octokit: new Octokit()
 	};
 
 	let shaFrom = core.getInput('sha_from', { required: true });
@@ -17,9 +20,9 @@ export async function main(): Promise<void> {
 	let ignoreOwn = core.getBooleanInput('ignore_own', { required: true });
 	let options: Options = { shaFrom, shaTo, codewatchers, ignoreOwn };
 
-	let octokit = new Octokit();
 
-	let notifications = await check(octokit, context, options);
+	let notifications = await check(context, options);
+
 	core.setOutput('notifications', notifications);
 }
 

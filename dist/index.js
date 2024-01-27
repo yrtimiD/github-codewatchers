@@ -52189,7 +52189,7 @@ function wrappy (fn, cb) {
 
 /***/ }),
 
-/***/ 7096:
+/***/ 8594:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -52230,104 +52230,82 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.check = void 0;
+exports.loadCodewatchers = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const ignore_1 = __importDefault(__nccwpck_require__(1230));
-function parseCodeOwners(content) {
-    let CO = {};
+function loadCodewatchers(context, options) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let { octokit, owner, repo, ref } = context;
+        let { codewatchers } = options;
+        let CW = [];
+        let file;
+        core.info(`Loading "${codewatchers}" file from ${ref}...`);
+        try {
+            let { data } = yield octokit.rest.repos.getContent({ owner, repo, ref, path: codewatchers, mediaType: { format: 'raw' } });
+            if (typeof data === 'string') {
+                file = data;
+                core.debug(file);
+            }
+            else {
+                throw Error(`Unexpected result from getContent API. Expected string got ${typeof data}`);
+            }
+        }
+        catch (e) {
+            throw Error(`Can't download "${codewatchers}" file. ${e === null || e === void 0 ? void 0 : e.message}`);
+        }
+        let parsed = parseCodeWatchers(file);
+        core.info(`Resolving users...`);
+        for (let names in parsed) {
+            let patterns = parsed[names];
+            CW.push({
+                user: yield resolveUser(octokit, names),
+                patterns: patterns,
+                ignore: (0, ignore_1.default)().add(patterns)
+            });
+        }
+        core.info(`Loaded ${CW.length} watchers`);
+        return CW;
+    });
+}
+exports.loadCodewatchers = loadCodewatchers;
+function parseCodeWatchers(content) {
+    let items = {};
     let lines = content.split(/$/m).map(l => l.trim()).filter(l => !l.startsWith('#') && l.length > 0);
     lines.forEach(line => {
         let [pattern, ...owners] = line.split(/\s+/);
         owners.forEach(owner => {
             var _a;
-            (CO[owner] = (_a = CO[owner]) !== null && _a !== void 0 ? _a : { owner: owner, matches: [] }).matches.push(pattern);
+            ((_a = items[owner]) !== null && _a !== void 0 ? _a : (items[owner] = [])).push(pattern);
         });
     });
-    return Object.values(CO);
+    return items;
 }
-function loadCodeowners(octokit, owner, repo, ref) {
+function resolveUser(octokit, emailOrLogin) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
-        let CO = [];
-        core.info(`Loading .github/CODEOWNERS file`);
+        core.debug(`Resolving ${emailOrLogin}...`);
+        let user = {};
         try {
-            let { data: codeownersFile } = yield octokit.rest.repos.getContent({
-                owner: owner,
-                repo: repo,
-                ref: ref,
-                path: '.github/CODEOWNERS',
-                mediaType: { format: 'raw' }
-            });
-            core.debug(codeownersFile);
-            CO = parseCodeOwners(codeownersFile);
-            core.info(`Got ${CO.length} owners`);
+            if (emailOrLogin.startsWith('@')) {
+                user.login = emailOrLogin.substring(1);
+            }
+            else if (emailOrLogin.includes('@')) {
+                user.email = emailOrLogin;
+                let { data } = yield octokit.search.users({ q: `${user.email} in:email type:user` }); // this returns only partial info, still full user need to be resolved by login
+                user.login = (_a = data.items[0]) === null || _a === void 0 ? void 0 : _a.login;
+            }
+            let { data } = yield octokit.users.getByUsername({ username: user.login });
+            user = data;
         }
         catch (e) {
-            throw Error(`Can't download .github/CODEOWNERS. ${e === null || e === void 0 ? void 0 : e.message}`);
+            core.notice(`Unable to resolve ${emailOrLogin}: ${e === null || e === void 0 ? void 0 : e.message}`);
         }
-        core.info(`Resolving owners emails...`);
-        for (let co of CO) {
-            co.owner = yield resolveEmail(octokit, co.owner);
+        if (user.name) {
+            core.debug(`Resolved to ${user.name}`);
         }
-        return CO;
+        return user;
     });
 }
-function resolveEmail(octokit, username) {
-    return __awaiter(this, void 0, void 0, function* () {
-        core.debug(`Resolving email for ${username}...`);
-        let email = null;
-        try {
-            if (username.startsWith('@')) {
-                username = username.substring(1);
-                let { data } = yield octokit.users.getByUsername({ username: username });
-                email = data.email;
-                core.debug(`Resolved to ${email}`);
-            }
-        }
-        catch (e) {
-            core.notice(`Unable to resolve email for ${username}: ${e === null || e === void 0 ? void 0 : e.message}`);
-        }
-        return email !== null && email !== void 0 ? email : username;
-    });
-}
-function formatPush(commits, files, diff_url) {
-    return [
-        '## Commits:',
-        ...commits.map(({ commit: c }) => { var _a; return `* [${(_a = c.author) === null || _a === void 0 ? void 0 : _a.name}: ${c.message}](${c.url})`; }),
-        '',
-        '## Files:',
-        ...files.map((f) => `* [${f.filename}](${f.contents_url})`),
-    ].join('\n');
-}
-function check(octokit, owner, repo, ref, shaFrom, shaTo) {
-    return __awaiter(this, void 0, void 0, function* () {
-        let CO = yield loadCodeowners(octokit, owner, repo, ref);
-        core.debug(JSON.stringify(CO));
-        core.debug(JSON.stringify(CO, null, 2));
-        core.info(`Comparing ${shaFrom} with ${shaTo}...`);
-        const { data } = yield octokit.rest.repos.compareCommits({
-            owner: owner,
-            repo: repo,
-            base: shaFrom,
-            head: shaTo,
-        });
-        const { commits, files, diff_url } = data;
-        let fileNames = files === null || files === void 0 ? void 0 : files.map(f => f.filename);
-        core.info(`${fileNames === null || fileNames === void 0 ? void 0 : fileNames.length} files were changed in ${commits.length} commits.`);
-        let message = formatPush(commits, files, diff_url);
-        core.debug(message);
-        let notif = [];
-        CO.forEach(co => {
-            let rules = (0, ignore_1.default)().add(co.matches);
-            let hasMatch = fileNames === null || fileNames === void 0 ? void 0 : fileNames.some(f => rules.ignores(f));
-            if (hasMatch) {
-                notif.push({ owner: co.owner, message: message });
-            }
-        });
-        core.info(`${notif.length} matches`);
-        return notif;
-    });
-}
-exports.check = check;
 
 
 /***/ }),
@@ -52373,17 +52351,23 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.main = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const action_1 = __nccwpck_require__(1231);
-const codeowners_1 = __nccwpck_require__(7096);
+const match_1 = __nccwpck_require__(43);
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
         let [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
-        let ref = process.env.GITHUB_REF;
-        // let token = core.getInput('github-token', { required: true });
-        let shaFrom = core.getInput('sha-from', { required: true });
-        let shaTo = core.getInput('sha-to', { required: true });
-        let octokit = new action_1.Octokit();
-        // await testConnection(octokit);
-        let notifications = yield (0, codeowners_1.check)(octokit, owner, repo, ref, shaFrom, shaTo);
+        let context = {
+            owner,
+            repo,
+            ref: process.env.GITHUB_REF,
+            refName: process.env.GITHUB_REF_NAME,
+            octokit: new action_1.Octokit()
+        };
+        let shaFrom = core.getInput('sha_from', { required: true });
+        let shaTo = core.getInput('sha_to', { required: true });
+        let codewatchers = core.getInput('codewatchers', { required: true });
+        let ignoreOwn = core.getBooleanInput('ignore_own', { required: true });
+        let options = { shaFrom, shaTo, codewatchers, ignoreOwn };
+        let notifications = yield (0, match_1.check)(context, options);
         core.setOutput('notifications', notifications);
     });
 }
@@ -52393,6 +52377,144 @@ main()
     console.error(e);
     core.setFailed(`Failed: ${e}`);
 });
+
+
+/***/ }),
+
+/***/ 43:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.check = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const codewatchers_1 = __nccwpck_require__(8594);
+const PAGE_SIZE = 100;
+function check(context, options) {
+    var _a, e_1, _b, _c;
+    var _d;
+    return __awaiter(this, void 0, void 0, function* () {
+        let { octokit, owner, repo } = context;
+        let { shaFrom, shaTo, ignoreOwn } = options;
+        let watchers = yield (0, codewatchers_1.loadCodewatchers)(context, options);
+        core.debug(JSON.stringify(watchers, ['user', 'patterns', 'login']));
+        core.info(`Comparing ${shaFrom}...${shaTo}`);
+        let commits = [];
+        let commitsIter = octokit.paginate.iterator(octokit.rest.repos.compareCommits, { owner, repo, base: shaFrom, head: shaTo, per_page: PAGE_SIZE });
+        try {
+            for (var _e = true, commitsIter_1 = __asyncValues(commitsIter), commitsIter_1_1; commitsIter_1_1 = yield commitsIter_1.next(), _a = commitsIter_1_1.done, !_a; _e = true) {
+                _c = commitsIter_1_1.value;
+                _e = false;
+                let { data } = _c;
+                commits.push(...(_d = data.commits.map(c => c.sha)) !== null && _d !== void 0 ? _d : []);
+                if (commits.at(-1) === shaTo) {
+                    break;
+                }
+            }
+        }
+        catch (e_1_1) { e_1 = { error: e_1_1 }; }
+        finally {
+            try {
+                if (!_e && !_a && (_b = commitsIter_1.return)) yield _b.call(commitsIter_1);
+            }
+            finally { if (e_1) throw e_1.error; }
+        }
+        let notifications = [];
+        for (let sha of commits) {
+            core.debug(`Checking ${sha}`);
+            let commit = yield fetchFullCommit(octokit, owner, repo, sha);
+            let fileNames = commit.files.map(f => f.filename);
+            core.info(`${fileNames === null || fileNames === void 0 ? void 0 : fileNames.length} file(s) were changed in ${sha}.`);
+            let N = { commit, watchers: [] };
+            watchers.forEach(cw => {
+                if (ignoreOwn && (cw.user.login === commit.author.login || cw.user.login === commit.committer.login))
+                    return;
+                let hasMatch = fileNames === null || fileNames === void 0 ? void 0 : fileNames.some(f => cw.ignore.ignores(f));
+                if (hasMatch) {
+                    N.watchers.push(cw.user);
+                }
+            });
+            if (N.watchers.length > 0) {
+                core.info(`Matched for ${N.watchers.length} watcher(s)`);
+                notifications.push(N);
+            }
+        }
+        core.info(`Created ${notifications.length} notification(s)`);
+        return notifications;
+    });
+}
+exports.check = check;
+function fetchFullCommit(octokit, owner, repo, sha) {
+    var _a, e_2, _b, _c;
+    var _d;
+    return __awaiter(this, void 0, void 0, function* () {
+        let filesIter = octokit.paginate.iterator(octokit.rest.repos.getCommit, { owner, repo, ref: sha });
+        let commit = null;
+        try {
+            for (var _e = true, filesIter_1 = __asyncValues(filesIter), filesIter_1_1; filesIter_1_1 = yield filesIter_1.next(), _a = filesIter_1_1.done, !_a; _e = true) {
+                _c = filesIter_1_1.value;
+                _e = false;
+                let { data } = _c;
+                if (commit) {
+                    commit.files.push(...(_d = data.files) !== null && _d !== void 0 ? _d : []);
+                    core.debug(`+${data.files.length} file(s)`);
+                }
+                else {
+                    commit = data;
+                    core.debug(`${data.files.length} file(s)`);
+                }
+            }
+        }
+        catch (e_2_1) { e_2 = { error: e_2_1 }; }
+        finally {
+            try {
+                if (!_e && !_a && (_b = filesIter_1.return)) yield _b.call(filesIter_1);
+            }
+            finally { if (e_2) throw e_2.error; }
+        }
+        return commit;
+    });
+}
 
 
 /***/ }),
