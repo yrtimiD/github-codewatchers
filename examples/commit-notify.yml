@@ -1,0 +1,51 @@
+name: Commit Notify
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - 'release/**'
+
+jobs:
+  get-notifications:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check commits
+        id: check
+        uses: yrtimiD/github-codewatchers@main
+        with:
+           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+           sha_from: ${{ github.event.before }}
+           sha_to: ${{ github.event.after }}
+           codewatchers: '.github/CODEWATCHERS'
+           ignore_own: false
+    outputs:
+      notifications: ${{ steps.check.outputs.notifications }}
+
+  sent-emails:
+    needs: get-notifications
+    runs-on: ubuntu-latest
+    name: ${{ join(matrix.notif.watchers.*.email,'; ') }}
+    strategy:
+      matrix:
+        notif: ${{fromJSON(needs.get-notifications.outputs.notifications)}}
+    steps:
+    - run: |
+        set -e
+        EMAIL_TO='${{ join(matrix.notif.watchers.*.email,'; ') }}'
+        SHA=${{matrix.notif.commit.sha}}
+        EMAIL_SUBJ="[$GITHUB_REPOSITORY] ${SHA:0:10} ${{ matrix.notif.commit.commit.message }}"
+        EMAIL_BODY="Author: ${{ matrix.notif.commit.author.login }}
+        Commit: ${{ matrix.notif.commit.sha }}
+        Message: ${{ matrix.notif.commit.commit.message }}
+        Files:
+        ${{ join(matrix.notif.commit.files.*.filename, '
+        ')}}
+        "
+
+        echo "To: $EMAIL_TO"
+        echo "Subj: $EMAIL_SUBJ"
+        echo "Body: $EMAIL_BODY"
+        # TODO: add actual email sending action
+
