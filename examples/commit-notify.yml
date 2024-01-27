@@ -1,4 +1,4 @@
-name: Commit Notify
+name: Notify on Commit Changes
 
 on:
   push:
@@ -31,21 +31,33 @@ jobs:
       matrix:
         notif: ${{fromJSON(needs.get-notifications.outputs.notifications)}}
     steps:
-    - run: |
+    - name: Compose email
+      id: compose
+      run: |
         set -e
         EMAIL_TO='${{ join(matrix.notif.watchers.*.email,'; ') }}'
         SHA=${{matrix.notif.commit.sha}}
         EMAIL_SUBJ="[$GITHUB_REPOSITORY] ${SHA:0:10} ${{ matrix.notif.commit.commit.message }}"
         EMAIL_BODY="Author: ${{ matrix.notif.commit.author.login }}
-        Commit: ${{ matrix.notif.commit.sha }}
         Message: ${{ matrix.notif.commit.commit.message }}
         Files:
         ${{ join(matrix.notif.commit.files.*.filename, '
         ')}}
+        Commit: ${{ matrix.notif.commit.html_url }}
         "
 
         echo "To: $EMAIL_TO"
         echo "Subj: $EMAIL_SUBJ"
         echo "Body: $EMAIL_BODY"
-        # TODO: add actual email sending action
-
+        
+        echo to="$EMAIL_TO" >> $GITHUB_OUTPUT
+        echo subj="$EMAIL_SUBJ" >> $GITHUB_OUTPUT
+        echo "body<<___EOF___" >> $GITHUB_OUTPUT
+        echo "$EMAIL_BODY" >> $GITHUB_OUTPUT
+        echo "___EOF___" >> $GITHUB_OUTPUT
+    
+    - uses: cinotify/github-action@main
+      with:
+        to: ${{ steps.compose.outputs.to }}
+        subject: ${{ steps.compose.outputs.subj }}
+        body: ${{ steps.compose.outputs.body }}
