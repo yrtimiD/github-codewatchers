@@ -29,4 +29,4 @@ Ensure to run `npm run build` before commit to update `dist` folder.
 
 
 ## Known limitations
-* Only up to 3000 files from each commit can be matched ([Get a commit](https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#get-a-commit) GitHub API limitation )
+* Only up to 3000 files from each commit can be matched (Limitation of [Get a commit](https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#get-a-commit) GitHub API )
