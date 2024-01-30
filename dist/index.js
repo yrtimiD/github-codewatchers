@@ -52512,6 +52512,7 @@ function fetchFullCommit(octokit, owner, repo, sha) {
             }
             finally { if (e_2) throw e_2.error; }
         }
+        commit.files.forEach(f => delete f.patch); // patch field is huge and hardly useful for notifications
         return commit;
     });
 }
