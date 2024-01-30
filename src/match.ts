@@ -6,7 +6,6 @@ import { loadCodewatchers } from './codewatchers';
 import { Commit, Context, Notif, Options } from './types';
 
 const PAGE_SIZE = 100;
-type CompareCommitsData = RestEndpointMethodTypes["repos"]["compareCommits"]["response"]["data"];
 
 export async function check(context: Context, options: Options): Promise<Notif[]> {
 	let { octokit, owner, repo } = context;
@@ -65,6 +64,7 @@ async function fetchFullCommit(octokit: Octokit, owner: string, repo: string, sh
 			core.debug(`${data.files.length} file(s)`);
 		}
 	}
+	commit.files.forEach(f => delete f.patch); // patch field is huge and hardly useful for notifications
 	return commit;
 }
 
