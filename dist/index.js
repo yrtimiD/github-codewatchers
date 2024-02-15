@@ -52467,7 +52467,8 @@ function check(context, options) {
             core.info(`${fileNames === null || fileNames === void 0 ? void 0 : fileNames.length} file(s) were changed in ${sha}.`);
             let N = { commit, watchers: [] };
             watchers.forEach(cw => {
-                if (ignoreOwn && (cw.user.login === commit.author.login || cw.user.login === commit.committer.login))
+                var _a, _b;
+                if (ignoreOwn && (cw.user.login === ((_a = commit.author) === null || _a === void 0 ? void 0 : _a.login) || cw.user.login === ((_b = commit.committer) === null || _b === void 0 ? void 0 : _b.login)))
                     return;
                 let hasMatch = fileNames === null || fileNames === void 0 ? void 0 : fileNames.some(f => cw.ignore.ignores(f));
                 if (hasMatch) {

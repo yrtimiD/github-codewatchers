@@ -34,7 +34,7 @@ export async function check(context: Context, options: Options): Promise<Notif[]
 
 		let N: Notif = { commit, watchers: [] };
 		watchers.forEach(cw => {
-			if (ignoreOwn && (cw.user.login === commit.author.login || cw.user.login === commit.committer.login)) return;
+			if (ignoreOwn && (cw.user.login === commit.author?.login || cw.user.login === commit.committer?.login)) return;
 
 			let hasMatch = fileNames?.some(f => cw.ignore.ignores(f));
 			if (hasMatch) {
