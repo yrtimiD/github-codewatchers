@@ -9,15 +9,17 @@ const PAGE_SIZE = 100;
 
 export async function check(context: Context, options: Options): Promise<Notif[]> {
 	let { octokit, owner, repo } = context;
-	let { shaFrom, shaTo, ignoreOwn } = options;
+	let { shaFrom, shaTo, ignoreOwn, limit } = options;
 	let watchers = await loadCodewatchers(context, options);
 	core.debug(JSON.stringify(watchers, ['user', 'patterns', 'login']));
 
 	core.info(`Comparing ${shaFrom}...${shaTo}`);
 
 	let commits: string[] = [];
+	let compareLink: string = null;
 	let commitsIter = octokit.paginate.iterator(octokit.rest.repos.compareCommits, { owner, repo, base: shaFrom, head: shaTo, per_page: PAGE_SIZE });
 	for await (let { data } of commitsIter) {
+		compareLink ??= data.html_url;
 		commits.push(...data.commits.map(c => c.sha) ?? []);
 		if (commits.at(-1) === shaTo) {
 			break;
@@ -45,6 +47,11 @@ export async function check(context: Context, options: Options): Promise<Notif[]
 		if (N.watchers.length > 0) {
 			core.info(`Matched for ${N.watchers.length} watcher(s)`);
 			notifications.push(N);
+		}
+
+		if (notifications.length >= limit) {
+			core.warning(`Configured notifications limit (${limit}) is reached, some commits might be skipped. Please inspect changes manually at ${compareLink}`);
+			break;
 		}
 	}
 	core.info(`Created ${notifications.length} notification(s)`);

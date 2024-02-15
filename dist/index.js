@@ -52366,7 +52366,8 @@ function main() {
         let shaTo = core.getInput('sha_to', { required: true });
         let codewatchers = core.getInput('codewatchers', { required: true });
         let ignoreOwn = core.getBooleanInput('ignore_own', { required: true });
-        let options = { shaFrom, shaTo, codewatchers, ignoreOwn };
+        let limit = Number.parseInt(core.getInput('limit', { required: true }), 10);
+        let options = { shaFrom, shaTo, codewatchers, ignoreOwn, limit };
         let notifications = yield (0, match_1.check)(context, options);
         core.setOutput('notifications', notifications);
     });
@@ -52435,17 +52436,19 @@ function check(context, options) {
     var _d;
     return __awaiter(this, void 0, void 0, function* () {
         let { octokit, owner, repo } = context;
-        let { shaFrom, shaTo, ignoreOwn } = options;
+        let { shaFrom, shaTo, ignoreOwn, limit } = options;
         let watchers = yield (0, codewatchers_1.loadCodewatchers)(context, options);
         core.debug(JSON.stringify(watchers, ['user', 'patterns', 'login']));
         core.info(`Comparing ${shaFrom}...${shaTo}`);
         let commits = [];
+        let compareLink = null;
         let commitsIter = octokit.paginate.iterator(octokit.rest.repos.compareCommits, { owner, repo, base: shaFrom, head: shaTo, per_page: PAGE_SIZE });
         try {
             for (var _e = true, commitsIter_1 = __asyncValues(commitsIter), commitsIter_1_1; commitsIter_1_1 = yield commitsIter_1.next(), _a = commitsIter_1_1.done, !_a; _e = true) {
                 _c = commitsIter_1_1.value;
                 _e = false;
                 let { data } = _c;
+                compareLink !== null && compareLink !== void 0 ? compareLink : (compareLink = data.html_url);
                 commits.push(...(_d = data.commits.map(c => c.sha)) !== null && _d !== void 0 ? _d : []);
                 if (commits.at(-1) === shaTo) {
                     break;
@@ -52478,6 +52481,10 @@ function check(context, options) {
             if (N.watchers.length > 0) {
                 core.info(`Matched for ${N.watchers.length} watcher(s)`);
                 notifications.push(N);
+            }
+            if (notifications.length >= limit) {
+                core.warning(`Configured notifications limit (${limit}) is reached, some commits might be skipped. Please inspect changes manually at ${compareLink}`);
+                break;
             }
         }
         core.info(`Created ${notifications.length} notification(s)`);

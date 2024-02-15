@@ -18,7 +18,8 @@ export async function main(): Promise<void> {
 	let shaTo = core.getInput('sha_to', { required: true });
 	let codewatchers = core.getInput('codewatchers', { required: true });
 	let ignoreOwn = core.getBooleanInput('ignore_own', { required: true });
-	let options: Options = { shaFrom, shaTo, codewatchers, ignoreOwn };
+	let limit = Number.parseInt(core.getInput('limit', { required: true }), 10);
+	let options: Options = { shaFrom, shaTo, codewatchers, ignoreOwn, limit };
 
 
 	let notifications = await check(context, options);

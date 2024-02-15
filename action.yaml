@@ -16,9 +16,13 @@ inputs:
     required: false
     default: '.github/CODEWATCHERS'
   ignore_own:
-    descriptions: 'Prevents notifications for own commits'
+    description: 'Prevents notifications for own commits'
     required: false
-    default: true
+    default: 'true'
+  limit:
+    description: 'Maximum number of notifications to produce. If limit exceeded - action will end with a warning and remaining commits will be skipped.'
+    required: false
+    default: '10'
 outputs:
   notifications:
     description: 'Array of notification objects each one has next fields: "to" (string), "subj" (string) and "body" (string) '

@@ -14,7 +14,8 @@ export type Options = {
 	codewatchers: string,
 	shaFrom: string,
 	shaTo: string,
-	ignoreOwn: boolean
+	ignoreOwn: boolean,
+	limit: number,
 };
 
 export type User = RestEndpointMethodTypes['users']['getByUsername']['response']['data'];

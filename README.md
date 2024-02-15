@@ -6,10 +6,11 @@ GitHub Action which helps sending notification about changed files to subscriber
 Subscriptions are managed in a [CODEOWNERS](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners) like file where file patterns are associated with users. You can use standard `.github/CODEOWNERS` file or make a new one called `.github/CODEWATCHERS` (can use any name) to have a better configuration flexibility.
 
 ### Inputs
-* `GITHUB_TOKEN` - token for interaction with GitHub API, standard GITHUB_TOKEN secret provided to each workflow is good enough
-* `codewatchers` - location of the subscriptions file, default is `.github/CODEWATCHERS`
-* `ignore_own` - toggles if committer will get notifications for own commits (boolean, default is `true`)
-* `sha_from` and `sha_to` - commits range to analize. Usually these are taken from the [push](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push) event (see example below)
+* `GITHUB_TOKEN` (required) - token for interaction with GitHub API, standard GITHUB_TOKEN secret provided to each workflow is good enough
+* `codewatchers` (optional) - location of the subscriptions file, default is ".github/CODEWATCHERS"
+* `ignore_own` (optional) - toggles if committer will get notifications for own commits (boolean, default is "true")
+* `sha_from` and `sha_to` (required) - commits range to analize. Usually these are taken from the [push](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push) event (see example below)
+* `limit` (optional) - maximum number of notifications to produce. If limit exceeded - action will end with a warning and remaining commits will be skipped. (integer, default is 10)
 
 Action doesn't requires repository checkout, all operations are done via GitHub API
 
@@ -29,6 +30,7 @@ jobs:
            ignore_own: true
            sha_from: ${{ github.event.before }}
            sha_to: ${{ github.event.after }}
+		   limit: 10
     outputs:
       notifications: ${{ steps.check.outputs.notifications }}
 ```
