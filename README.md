@@ -30,7 +30,7 @@ jobs:
            ignore_own: true
            sha_from: ${{ github.event.before }}
            sha_to: ${{ github.event.after }}
-		   limit: 10
+           limit: 10
     outputs:
       notifications: ${{ steps.check.outputs.notifications }}
 ```
