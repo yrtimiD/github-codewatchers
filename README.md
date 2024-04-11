@@ -1,6 +1,6 @@
 # github-codewatchers Commit notifier
 
-GitHub Action which helps sending notification about changed files to subscribers.
+> GitHub Action that triggers notifications about changed files to a list of subscribers.
 
 ## Configuration
 Subscriptions are managed in a [CODEOWNERS](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners) like file where file patterns are associated with users. You can use standard `.github/CODEOWNERS` file or make a new one called `.github/CODEWATCHERS` (can use any name) to have a better configuration flexibility.
