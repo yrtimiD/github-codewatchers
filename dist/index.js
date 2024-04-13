@@ -216,6 +216,7 @@ function getInput(name, options) {
     }
     return val.trim();
 }
+
 exports.getInput = getInput;
 /**
  * Gets the values of an multiline input.  Each value is also trimmed.
@@ -52366,9 +52367,12 @@ function main() {
         let shaTo = core.getInput('sha_to', { required: true });
         let codewatchers = core.getInput('codewatchers', { required: true });
         let ignoreOwn = core.getBooleanInput('ignore_own', { required: true });
-        let limit = Number.parseInt(core.getInput('limit', { required: true }), 10);
-        let options = { shaFrom, shaTo, codewatchers, ignoreOwn, limit };
+        let aggregateFilesLimit = Number.parseInt(core.getInput('aggregate_files_limit', { required: false }), 10) || 20;
+        let aggregateNotificationsLimit = Number.parseInt(core.getInput('aggregate_notifications_limit', { required: false }), 10) || 5;
+        let options = { shaFrom, shaTo, codewatchers, ignoreOwn, aggregateFilesLimit, aggregateNotificationsLimit };
         let notifications = yield (0, match_1.check)(context, options);
+        notifications = (0, match_1.aggregateCommits)(context, options, notifications);
+        notifications = (0, match_1.aggregateFiles)(context, options, notifications);
         core.setOutput('notifications', notifications);
     });
 }
@@ -52427,29 +52431,28 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
     function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.check = void 0;
+exports.aggregateFiles = exports.aggregateCommits = exports.check = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const codewatchers_1 = __nccwpck_require__(8594);
 const PAGE_SIZE = 100;
 function check(context, options) {
     var _a, e_1, _b, _c;
-    var _d;
+    var _d, _e;
     return __awaiter(this, void 0, void 0, function* () {
         let { octokit, owner, repo } = context;
-        let { shaFrom, shaTo, ignoreOwn, limit } = options;
+        let { shaFrom, shaTo, ignoreOwn } = options;
         let watchers = yield (0, codewatchers_1.loadCodewatchers)(context, options);
         core.debug(JSON.stringify(watchers, ['user', 'patterns', 'login']));
         core.info(`Comparing ${shaFrom}...${shaTo}`);
         let commits = [];
-        let compareLink = null;
         let commitsIter = octokit.paginate.iterator(octokit.rest.repos.compareCommits, { owner, repo, base: shaFrom, head: shaTo, per_page: PAGE_SIZE });
         try {
-            for (var _e = true, commitsIter_1 = __asyncValues(commitsIter), commitsIter_1_1; commitsIter_1_1 = yield commitsIter_1.next(), _a = commitsIter_1_1.done, !_a; _e = true) {
+            for (var _f = true, commitsIter_1 = __asyncValues(commitsIter), commitsIter_1_1; commitsIter_1_1 = yield commitsIter_1.next(), _a = commitsIter_1_1.done, !_a; _f = true) {
                 _c = commitsIter_1_1.value;
-                _e = false;
+                _f = false;
                 let { data } = _c;
-                compareLink !== null && compareLink !== void 0 ? compareLink : (compareLink = data.html_url);
-                commits.push(...(_d = data.commits.map(c => c.sha)) !== null && _d !== void 0 ? _d : []);
+                (_d = context.compareLink) !== null && _d !== void 0 ? _d : (context.compareLink = data.html_url);
+                commits.push(...(_e = data.commits.map(c => c.sha)) !== null && _e !== void 0 ? _e : []);
                 if (commits.at(-1) === shaTo) {
                     break;
                 }
@@ -52458,7 +52461,7 @@ function check(context, options) {
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
         finally {
             try {
-                if (!_e && !_a && (_b = commitsIter_1.return)) yield _b.call(commitsIter_1);
+                if (!_f && !_a && (_b = commitsIter_1.return)) yield _b.call(commitsIter_1);
             }
             finally { if (e_1) throw e_1.error; }
         }
@@ -52466,25 +52469,21 @@ function check(context, options) {
         for (let sha of commits) {
             core.debug(`Checking ${sha}`);
             let commit = yield fetchFullCommit(octokit, owner, repo, sha);
-            let fileNames = commit.files.map(f => f.filename);
+            let fileNames = commit.files.flatMap(f => [f.filename, f.previous_filename]).filter(f => f != null);
             core.info(`${fileNames === null || fileNames === void 0 ? void 0 : fileNames.length} file(s) were changed in ${sha}.`);
-            let N = { commit, watchers: [] };
+            let N = { commit: stripCommit(commit), watchers: [] };
             watchers.forEach(cw => {
                 var _a, _b;
                 if (ignoreOwn && (cw.user.login === ((_a = commit.author) === null || _a === void 0 ? void 0 : _a.login) || cw.user.login === ((_b = commit.committer) === null || _b === void 0 ? void 0 : _b.login)))
                     return;
                 let hasMatch = fileNames === null || fileNames === void 0 ? void 0 : fileNames.some(f => cw.ignore.ignores(f));
                 if (hasMatch) {
-                    N.watchers.push(cw.user);
+                    N.watchers.push(stripUser(cw.user));
                 }
             });
             if (N.watchers.length > 0) {
                 core.info(`Matched for ${N.watchers.length} watcher(s)`);
                 notifications.push(N);
-            }
-            if (notifications.length >= limit) {
-                core.warning(`Configured notifications limit (${limit}) is reached, some commits might be skipped. Please inspect changes manually at ${compareLink}`);
-                break;
             }
         }
         core.info(`Created ${notifications.length} notification(s)`);
@@ -52523,6 +52522,82 @@ function fetchFullCommit(octokit, owner, repo, sha) {
         commit.files.forEach(f => delete f.patch); // patch field is huge and hardly useful for notifications
         return commit;
     });
+}
+function aggregateCommits(context, options, notifications) {
+    var _a;
+    let { aggregateNotificationsLimit } = options;
+    let groupByWatchers = Object.create({});
+    for (let n of notifications) {
+        let key = n.watchers.map(w => w.login).sort().join(';');
+        ((_a = groupByWatchers[key]) !== null && _a !== void 0 ? _a : (groupByWatchers[key] = [])).push(n);
+    }
+    for (let [g, n] of Object.entries(groupByWatchers)) {
+        if (n.length > aggregateNotificationsLimit) {
+            groupByWatchers[g] = [{
+                    watchers: n[0].watchers,
+                    commit: {
+                        html_url: context.compareLink,
+                        commit: {
+                            author: { name: '[Multiple authors]' },
+                            committer: { name: '[Multiple committers]' },
+                            message: `[${n.length} commits]`,
+                        },
+                        sha: '0000000000000000000000000000000000000000',
+                    }
+                }];
+        }
+    }
+    return Object.values(groupByWatchers).flat();
+}
+exports.aggregateCommits = aggregateCommits;
+function aggregateFiles(context, options, notifications) {
+    var _a;
+    let { aggregateFilesLimit } = options;
+    for (let n of notifications) {
+        if (((_a = n.commit.files) === null || _a === void 0 ? void 0 : _a.length) > aggregateFilesLimit) {
+            n.commit.files = [{
+                    filename: `[${n.commit.files.length} files]`,
+                    sha: '0000000000000000000000000000000000000000',
+                }];
+        }
+    }
+    return notifications;
+}
+exports.aggregateFiles = aggregateFiles;
+function stripCommit(c) {
+    return {
+        sha: c.sha,
+        html_url: c.html_url,
+        stats: c.stats,
+        commit: {
+            author: c.commit.author,
+            committer: c.commit.committer,
+            message: c.commit.message
+        },
+        files: c.files.map(f => ({
+            sha: f.sha,
+            blob_url: f.blob_url,
+            raw_url: f.raw_url,
+            filename: f.filename,
+            previous_filename: f.previous_filename,
+            additions: f.additions,
+            changes: f.changes,
+            deletions: f.deletions,
+            status: f.status,
+        })),
+    };
+}
+function stripUser(u) {
+    return {
+        login: u.login,
+        name: u.name,
+        email: u.email,
+        type: u.type,
+        company: u.company,
+        avatar_url: u.avatar_url,
+        gravatar_id: u.gravatar_id,
+        html_url: u.html_url
+    };
 }
 
 

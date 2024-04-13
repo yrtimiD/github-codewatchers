@@ -1,14 +1,14 @@
 import { Octokit } from '@octokit/rest';
 import * as core from '@actions/core';
-import { CodeWatchers, Context, Options, User } from './types';
+import { Notif, Context, Options, GH } from './types';
 import ignore from 'ignore';
 
 
-export async function loadCodewatchers(context: Context, options: Options): Promise<CodeWatchers[]> {
+export async function loadCodewatchers(context: Context, options: Options): Promise<Notif.CodeWatchers[]> {
 	let { octokit, owner, repo, ref } = context;
 	let { codewatchers } = options;
 
-	let CW: CodeWatchers[] = [];
+	let CW: Notif.CodeWatchers[] = [];
 	let file: string;
 	core.info(`Loading "${codewatchers}" file from ${ref}...`);
 	try {
@@ -51,9 +51,9 @@ function parseCodeWatchers(content: string) {
 	return items;
 }
 
-async function resolveUser(octokit: Octokit, emailOrLogin: string): Promise<Partial<User>> {
+async function resolveUser(octokit: Octokit, emailOrLogin: string): Promise<Partial<GH.User>> {
 	core.debug(`Resolving ${emailOrLogin}...`);
-	let user: Partial<User> = {};
+	let user: Partial<GH.User> = {};
 	try {
 		if (emailOrLogin.startsWith('@')) {
 			user.login = emailOrLogin.substring(1);

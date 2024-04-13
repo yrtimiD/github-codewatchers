@@ -1,46 +1,45 @@
-import { Octokit, RestEndpointMethodTypes } from '@octokit/rest';
+import { Octokit } from '@octokit/rest';
 import * as core from '@actions/core';
-import ignore from 'ignore';
 
 import { loadCodewatchers } from './codewatchers';
-import { Commit, Context, Notif, Options } from './types';
+import { Context, GH, Notif, Options } from './types';
+
 
 const PAGE_SIZE = 100;
 
-export async function check(context: Context, options: Options): Promise<Notif[]> {
+export async function check(context: Context, options: Options): Promise<Notif.Notif[]> {
 	let { octokit, owner, repo } = context;
-	let { shaFrom, shaTo, ignoreOwn, limit } = options;
+	let { shaFrom, shaTo, ignoreOwn } = options;
 	let watchers = await loadCodewatchers(context, options);
 	core.debug(JSON.stringify(watchers, ['user', 'patterns', 'login']));
 
 	core.info(`Comparing ${shaFrom}...${shaTo}`);
 
 	let commits: string[] = [];
-	let compareLink: string = null;
 	let commitsIter = octokit.paginate.iterator(octokit.rest.repos.compareCommits, { owner, repo, base: shaFrom, head: shaTo, per_page: PAGE_SIZE });
 	for await (let { data } of commitsIter) {
-		compareLink ??= data.html_url;
+		context.compareLink ??= data.html_url;
 		commits.push(...data.commits.map(c => c.sha) ?? []);
 		if (commits.at(-1) === shaTo) {
 			break;
 		}
 	}
 
-	let notifications: Notif[] = [];
+	let notifications: Notif.Notif[] = [];
 	for (let sha of commits) {
 		core.debug(`Checking ${sha}`);
-		let commit: Commit = await fetchFullCommit(octokit, owner, repo, sha);
+		let commit: GH.Commit = await fetchFullCommit(octokit, owner, repo, sha);
 
-		let fileNames = commit.files.map(f => f.filename);
+		let fileNames = commit.files.flatMap(f => [f.filename, f.previous_filename]).filter(f => f != null);
 		core.info(`${fileNames?.length} file(s) were changed in ${sha}.`);
 
-		let N: Notif = { commit, watchers: [] };
+		let N: Notif.Notif = { commit: stripCommit(commit), watchers: [] };
 		watchers.forEach(cw => {
 			if (ignoreOwn && (cw.user.login === commit.author?.login || cw.user.login === commit.committer?.login)) return;
 
 			let hasMatch = fileNames?.some(f => cw.ignore.ignores(f));
 			if (hasMatch) {
-				N.watchers.push(cw.user);
+				N.watchers.push(stripUser(cw.user));
 			}
 		});
 
@@ -49,19 +48,15 @@ export async function check(context: Context, options: Options): Promise<Notif[]
 			notifications.push(N);
 		}
 
-		if (notifications.length >= limit) {
-			core.warning(`Configured notifications limit (${limit}) is reached, some commits might be skipped. Please inspect changes manually at ${compareLink}`);
-			break;
-		}
 	}
 	core.info(`Created ${notifications.length} notification(s)`);
 
 	return notifications;
 }
 
-async function fetchFullCommit(octokit: Octokit, owner: string, repo: string, sha: string): Promise<Commit> {
+async function fetchFullCommit(octokit: Octokit, owner: string, repo: string, sha: string): Promise<GH.Commit> {
 	let filesIter = octokit.paginate.iterator(octokit.rest.repos.getCommit, { owner, repo, ref: sha });
-	let commit: Commit = null;
+	let commit: GH.Commit = null;
 	for await (let { data } of filesIter) {
 		if (commit) {
 			commit.files.push(...data.files ?? []);
@@ -75,3 +70,81 @@ async function fetchFullCommit(octokit: Octokit, owner: string, repo: string, sh
 	return commit;
 }
 
+export function aggregateCommits(context: Context, options: Options, notifications: Notif.Notif[]): Notif.Notif[] {
+	let { aggregateNotificationsLimit } = options;
+
+	let groupByWatchers: { [names: string]: Notif.Notif[] } = Object.create({});
+	for (let n of notifications) {
+		let key = n.watchers.map(w => w.login).sort().join(';');
+		(groupByWatchers[key] ??= []).push(n);
+	}
+	for (let [g, n] of Object.entries(groupByWatchers)) {
+		if (n.length > aggregateNotificationsLimit) {
+			groupByWatchers[g] = [{
+				watchers: n[0].watchers,
+				commit: {
+					html_url: context.compareLink,
+					commit: {
+						author: { name: '[Multiple authors]' },
+						committer: { name: '[Multiple committers]' },
+						message: `[${n.length} commits]`,
+					},
+					sha: '0000000000000000000000000000000000000000',
+				}
+			}];
+		}
+	}
+
+	return Object.values(groupByWatchers).flat();
+}
+
+export function aggregateFiles(context: Context, options: Options, notifications: Notif.Notif[]): Notif.Notif[] {
+	let { aggregateFilesLimit } = options;
+
+	for (let n of notifications) {
+		if (n.commit.files?.length > aggregateFilesLimit) {
+			n.commit.files = [{
+				filename: `[${n.commit.files.length} files]`,
+				sha: '0000000000000000000000000000000000000000',
+			}];
+		}
+	}
+	return notifications;
+}
+
+function stripCommit(c: GH.Commit): Notif.Commit {
+	return {
+		sha: c.sha,
+		html_url: c.html_url,
+		stats: c.stats,
+		commit: {
+			author: c.commit.author,
+			committer: c.commit.committer,
+			message: c.commit.message
+		},
+		files: c.files.map(f => ({
+			sha: f.sha,
+			blob_url: f.blob_url,
+			raw_url: f.raw_url,
+			filename: f.filename,
+			previous_filename: f.previous_filename,
+			additions: f.additions,
+			changes: f.changes,
+			deletions: f.deletions,
+			status: f.status,
+		})),
+	}
+}
+
+function stripUser(u: Partial<GH.User>): Notif.User {
+	return {
+		login: u.login,
+		name: u.name,
+		email: u.email,
+		type: u.type,
+		company: u.company,
+		avatar_url: u.avatar_url,
+		gravatar_id: u.gravatar_id,
+		html_url: u.html_url
+	}
+}

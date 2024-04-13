@@ -19,10 +19,14 @@ inputs:
     description: 'Prevents notifications for own commits'
     required: false
     default: 'true'
-  limit:
-    description: 'Maximum number of notifications to produce. If limit exceeded - action will end with a warning and remaining commits will be skipped.'
+  aggregate_files_limit:
+    description: 'Limit after which files list will be replaced with aggregated summary message'
     required: false
-    default: '10'
+    default: 20
+  aggregate_notifications_limit:
+    description: 'Limit after which many notifications will be replaces with a single aggregated summary message (for each distinct group of subscribers)'
+    required: false
+    default: 5
 outputs:
   notifications:
     description: 'Array of notification objects each one has next fields: "to" (string), "subj" (string) and "body" (string) '
