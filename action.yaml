@@ -22,14 +22,14 @@ inputs:
   aggregate_files_limit:
     description: 'Limit after which files list will be replaced with aggregated summary message'
     required: false
-    default: 20
+    default: '20'
   aggregate_notifications_limit:
     description: 'Limit after which many notifications will be replaces with a single aggregated summary message (for each distinct group of subscribers)'
     required: false
-    default: 5
+    default: '5'
 outputs:
   notifications:
-    description: 'Array of notification objects each one has next fields: "to" (string), "subj" (string) and "body" (string) '
+    description: 'Array of notification objects each one has two fields: "commit" (single commit details), "watchers" (array of subscribers)'
 branding:
   icon: 'bell'
   color: 'green'

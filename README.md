@@ -10,7 +10,8 @@ Subscriptions are managed in a [CODEOWNERS](https://docs.github.com/en/repositor
 * `codewatchers` (optional) - location of the subscriptions file, default is ".github/CODEWATCHERS"
 * `ignore_own` (optional) - toggles if committer will get notifications for own commits (boolean, default is "true")
 * `sha_from` and `sha_to` (required) - commits range to analize. Usually these are taken from the [push](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push) event (see example below)
-* `limit` (optional) - maximum number of notifications to produce. If limit exceeded - action will end with a warning and remaining commits will be skipped. (integer, default is 10)
+* `aggregate_files_limit` (optional) - Limit after which files list will be replaced with aggregated summary message. (integer, default is 20)
+* `aggregate_notifications_limit` (optional) - Limit after which many notifications will be replaces with a single aggregated summary message (for each distinct group of subscribers). (integer, default is 5)
 
 Action doesn't requires repository checkout, all operations are done via GitHub API
 
@@ -30,29 +31,34 @@ jobs:
            ignore_own: true
            sha_from: ${{ github.event.before }}
            sha_to: ${{ github.event.after }}
-           limit: 10
+           aggregate_files_limit: 20
+		   aggregate_notifications_limit: 5
     outputs:
       notifications: ${{ steps.check.outputs.notifications }}
 ```
 
 ### Output
-If any commit has files matched to subsciption rules - action will output an array of watchers (as [GitHub API User](https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-a-user)) and commit (as [GitHub API Commit](https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#get-a-commit)) object.
+If any commit has files matched to subsciption rules - action will output an array of watchers (as simplified [GitHub API User](https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-a-user)) and commit (as simplified [GitHub API Commit](https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#get-a-commit)) object.
 
-Simplified version of output looks next (there are more fields):
+Simplified version of output looks next (only most useful fields are shown):
 ```json
 {
   "commit": {
     "sha": "5fd3a8a657f7d78b8e8cdb2747585b24607f7e05",
     "commit": {
-      "message": "testing"
+      "message": "testing",
+      "author": {
+        "name": "Example User",
+        "email": "example@example.com",
+        "date": "2024-04-13T08:00:00Z"
+      },
+      "committer": {
+        "name": "Example User",
+        "email": "example@example.com",
+        "date": "2024-04-13T08:00:00Z"
+      }
     },
     "html_url": "https://github.com/example/example/commit/5fd3a8a657f7d78b8e8cdb2747585b24607f7e05",
-    "author": {
-      "login": "somecommitter"
-    },
-    "committer": {
-      "login": "somecommitter"
-    },
     "stats": {
       "total": 2,
       "additions": 1,
@@ -64,7 +70,9 @@ Simplified version of output looks next (there are more fields):
         "status": "modified",
         "additions": 1,
         "deletions": 1,
-        "changes": 2
+        "changes": 2,
+        "blob_url": "https://github.com/example/example/blob/8b61fc1be2ebe2cfe5102587f55ffabd25a58fa5/some%2Ffile%2Fwas%2Fchanged.txt",
+        "raw_url": "https://github.com/example/example/raw/8b61fc1be2ebe2cfe5102587f55ffabd25a58fa5/some%2Ffile%2Fwas%2Fchanged.txt"
       }
     ]
   },
@@ -80,6 +88,13 @@ Simplified version of output looks next (there are more fields):
 
 ## Usage Example
 See full example workflow in [examples](examples/)
+
+Example of `.CODEWATCHERS` file
+```
+*.md         tech_writer@example.com
+*.sql        dba@example.com
+package.json @somewatcher
+```
 
 ## Known limitations
 * Only up to 3000 files from each commit can be matched (Limitation of [Get a commit](https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#get-a-commit) GitHub API )
