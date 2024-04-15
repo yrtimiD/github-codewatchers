@@ -106,7 +106,6 @@ export function aggregateFiles(context: Context, options: Options, notifications
 			n.commit.files = [{
 				filename: `[${n.commit.files.length} files]`,
 				sha: '0000000000000000000000000000000000000000',
-				status: 'changed'
 			}];
 		}
 	}
