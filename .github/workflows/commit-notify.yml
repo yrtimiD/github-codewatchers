@@ -33,12 +33,15 @@ jobs:
         SHA=${{ matrix.notif.commit.sha }}
         SUBJ=$(echo "${{ matrix.notif.commit.commit.message }}" | head -1)
         EMAIL_SUBJ="[$GITHUB_REPOSITORY] ${SHA:0:10} $SUBJ"
-        EMAIL_BODY="Author: ${{ matrix.notif.commit.commit.author.name }} ${{ matrix.notif.commit.commit.author.email }}
+        FILES=$( echo '${{ toJSON(matrix.notif.commit.files) }}' | jq --raw-output '.[].filename | select(. != null)' )
+        EMAIL_BODY=$(cat <<- ___EOF___
+        Author: ${{ matrix.notif.commit.commit.author.name }} ${{ matrix.notif.commit.commit.author.email }}
         Message: ${{ matrix.notif.commit.commit.message }}
         Files:
-        $( echo '${{ toJSON(matrix.notif.commit.files) }}' | jq --raw-output '.[].filename | select(. != null)' )
+        $FILES
         Commit: ${{ matrix.notif.commit.html_url }}
-        "
+        ___EOF___
+        )
 
         echo "To: $EMAIL_TO"
         echo "Subj: $EMAIL_SUBJ"
