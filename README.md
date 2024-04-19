@@ -87,7 +87,7 @@ Simplified version of output looks next (only most useful fields are shown):
 ```
 
 ## Usage Example
-See full example workflow in [examples](examples/)
+See full workflow example in [.github/workflows/commit-notify.yml](.github/workflows/commit-notify.yml/)
 
 Example of `.CODEWATCHERS` file
 ```
