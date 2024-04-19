@@ -102,12 +102,8 @@ export function aggregateFiles(context: Context, options: Options, notifications
 	let { aggregateFilesLimit } = options;
 
 	for (let n of notifications) {
-		if (n.commit.files?.length > aggregateFilesLimit) {
-			n.commit.files = [{
-				filename: `[${n.commit.files.length} files]`,
-				sha: '0000000000000000000000000000000000000000',
-			}];
-		}
+		// nullify all files info above allowed limit
+		for (let i = aggregateFilesLimit; i < n.commit.files?.length; i++) n.commit.files[i] = null;
 	}
 	return notifications;
 }

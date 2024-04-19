@@ -216,7 +216,6 @@ function getInput(name, options) {
     }
     return val.trim();
 }
-
 exports.getInput = getInput;
 /**
  * Gets the values of an multiline input.  Each value is also trimmed.
@@ -52554,12 +52553,9 @@ function aggregateFiles(context, options, notifications) {
     var _a;
     let { aggregateFilesLimit } = options;
     for (let n of notifications) {
-        if (((_a = n.commit.files) === null || _a === void 0 ? void 0 : _a.length) > aggregateFilesLimit) {
-            n.commit.files = [{
-                    filename: `[${n.commit.files.length} files]`,
-                    sha: '0000000000000000000000000000000000000000',
-                }];
-        }
+        // nullify all files info above allowed limit
+        for (let i = aggregateFilesLimit; i < ((_a = n.commit.files) === null || _a === void 0 ? void 0 : _a.length); i++)
+            n.commit.files[i] = null;
     }
     return notifications;
 }

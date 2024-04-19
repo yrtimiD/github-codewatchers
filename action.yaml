@@ -20,7 +20,7 @@ inputs:
     required: false
     default: 'true'
   aggregate_files_limit:
-    description: 'Limit after which files list will be replaced with aggregated summary message'
+    description: 'Limit of how much files details will be included'
     required: false
     default: '20'
   aggregate_notifications_limit:
