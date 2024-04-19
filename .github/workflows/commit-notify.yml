@@ -36,8 +36,7 @@ jobs:
         EMAIL_BODY="Author: ${{ matrix.notif.commit.commit.author.name }} ${{ matrix.notif.commit.commit.author.email }}
         Message: ${{ matrix.notif.commit.commit.message }}
         Files:
-        ${{ join(matrix.notif.commit.files.*.filename, '
-        ') }}
+        $( echo '${{ toJSON(matrix.notif.commit.files) }}' | jq --raw-output '.[].filename | select(. != null)' )
         Commit: ${{ matrix.notif.commit.html_url }}
         "
 
