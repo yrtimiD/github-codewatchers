@@ -5,14 +5,14 @@ import ignore from 'ignore';
 
 
 export async function loadCodewatchers(context: Context, options: Options): Promise<Notif.CodeWatchers[]> {
-	let { octokit, owner, repo, ref } = context;
-	let { codewatchers } = options;
+	let { octokit, owner, repo } = context;
+	let { codewatchers, codewatchersRef } = options;
 
 	let CW: Notif.CodeWatchers[] = [];
 	let file: string;
-	core.info(`Loading "${codewatchers}" file from ${ref}...`);
+	core.info(`Loading "${codewatchers}" file from ${codewatchersRef}...`);
 	try {
-		let { data } = await octokit.rest.repos.getContent({ owner, repo, ref, path: codewatchers, mediaType: { format: 'raw' } });
+		let { data } = await octokit.rest.repos.getContent({ owner, repo, ref: codewatchersRef, path: codewatchers, mediaType: { format: 'raw' } });
 		if (typeof data === 'string') {
 			file = data;
 			core.debug(file);
