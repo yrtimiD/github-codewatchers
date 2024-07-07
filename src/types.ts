@@ -13,6 +13,7 @@ export type Context = {
 
 export type Options = {
 	codewatchers: string,
+	codewatchersRef: string,
 	shaFrom: string,
 	shaTo: string,
 	ignoreOwn: boolean,

@@ -8,6 +8,7 @@ Subscriptions are managed in a [CODEOWNERS](https://docs.github.com/en/repositor
 ### Inputs
 * `GITHUB_TOKEN` (required) - token for interaction with GitHub API, standard GITHUB_TOKEN secret provided to each workflow is good enough
 * `codewatchers` (optional) - location of the subscriptions file, default is ".github/CODEWATCHERS"
+* `codewatchers_ref` (optional) - the ref to use when loading the CODEWATCHERS file, default is github.ref
 * `ignore_own` (optional) - toggles if committer will get notifications for own commits (boolean, default is "true")
 * `sha_from` and `sha_to` (required) - commits range to analize. Usually these are taken from the [push](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#push) event (see example below)
 * `aggregate_files_limit` (optional) - Limit after which files list will be replaced with aggregated summary message. (integer, default is 20)
@@ -26,13 +27,14 @@ jobs:
         id: check
         uses: yrtimiD/github-codewatchers@v1
         with:
-           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-           codewatchers: '.github/CODEWATCHERS'
-           ignore_own: true
-           sha_from: ${{ github.event.before }}
-           sha_to: ${{ github.event.after }}
-           aggregate_files_limit: 20
-		   aggregate_notifications_limit: 5
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          codewatchers: '.github/CODEWATCHERS'
+          codewatchers_ref: 'main'
+          ignore_own: true
+          sha_from: ${{ github.event.before }}
+          sha_to: ${{ github.event.after }}
+          aggregate_files_limit: 20
+          aggregate_notifications_limit: 5
     outputs:
       notifications: ${{ steps.check.outputs.notifications }}
 ```

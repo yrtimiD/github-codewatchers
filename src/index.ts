@@ -17,10 +17,12 @@ export async function main(): Promise<void> {
 	let shaFrom = core.getInput('sha_from', { required: true });
 	let shaTo = core.getInput('sha_to', { required: true });
 	let codewatchers = core.getInput('codewatchers', { required: true });
+	let codewatchersRef = core.getInput('codewatchers_ref', { required: false }) || context.ref;
 	let ignoreOwn = core.getBooleanInput('ignore_own', { required: true });
 	let aggregateFilesLimit = Number.parseInt(core.getInput('aggregate_files_limit', { required: false }), 10) || 20;
 	let aggregateNotificationsLimit = Number.parseInt(core.getInput('aggregate_notifications_limit', { required: false }), 10) || 5;
-	let options: Options = { shaFrom, shaTo, codewatchers, ignoreOwn, aggregateFilesLimit, aggregateNotificationsLimit };
+	let options: Options = { shaFrom, shaTo, codewatchers, codewatchersRef, ignoreOwn, aggregateFilesLimit, aggregateNotificationsLimit };
+	core.debug(JSON.stringify({ options }, null, 2));
 
 	let notifications = await check(context, options);
 	notifications = aggregateCommits(context, options, notifications);

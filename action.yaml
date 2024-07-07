@@ -15,6 +15,9 @@ inputs:
     description: 'Location of the CODEWATCHERS file'
     required: false
     default: '.github/CODEWATCHERS'
+  codewatchers_ref:
+    description: 'The ref to use when loading the CODEWATCHERS file. (using github.ref by default)'
+    required: false
   ignore_own:
     description: 'Prevents notifications for own commits'
     required: false

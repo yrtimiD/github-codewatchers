@@ -52235,13 +52235,13 @@ const core = __importStar(__nccwpck_require__(2186));
 const ignore_1 = __importDefault(__nccwpck_require__(1230));
 function loadCodewatchers(context, options) {
     return __awaiter(this, void 0, void 0, function* () {
-        let { octokit, owner, repo, ref } = context;
-        let { codewatchers } = options;
+        let { octokit, owner, repo } = context;
+        let { codewatchers, codewatchersRef } = options;
         let CW = [];
         let file;
-        core.info(`Loading "${codewatchers}" file from ${ref}...`);
+        core.info(`Loading "${codewatchers}" file from ${codewatchersRef}...`);
         try {
-            let { data } = yield octokit.rest.repos.getContent({ owner, repo, ref, path: codewatchers, mediaType: { format: 'raw' } });
+            let { data } = yield octokit.rest.repos.getContent({ owner, repo, ref: codewatchersRef, path: codewatchers, mediaType: { format: 'raw' } });
             if (typeof data === 'string') {
                 file = data;
                 core.debug(file);
@@ -52365,10 +52365,12 @@ function main() {
         let shaFrom = core.getInput('sha_from', { required: true });
         let shaTo = core.getInput('sha_to', { required: true });
         let codewatchers = core.getInput('codewatchers', { required: true });
+        let codewatchersRef = core.getInput('codewatchers_ref', { required: false }) || context.ref;
         let ignoreOwn = core.getBooleanInput('ignore_own', { required: true });
         let aggregateFilesLimit = Number.parseInt(core.getInput('aggregate_files_limit', { required: false }), 10) || 20;
         let aggregateNotificationsLimit = Number.parseInt(core.getInput('aggregate_notifications_limit', { required: false }), 10) || 5;
-        let options = { shaFrom, shaTo, codewatchers, ignoreOwn, aggregateFilesLimit, aggregateNotificationsLimit };
+        let options = { shaFrom, shaTo, codewatchers, codewatchersRef, ignoreOwn, aggregateFilesLimit, aggregateNotificationsLimit };
+        core.debug(JSON.stringify({ options }, null, 2));
         let notifications = yield (0, match_1.check)(context, options);
         notifications = (0, match_1.aggregateCommits)(context, options, notifications);
         notifications = (0, match_1.aggregateFiles)(context, options, notifications);
