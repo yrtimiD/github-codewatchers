@@ -20,6 +20,7 @@ jobs:
   sent-emails:
     needs: get-notifications
     runs-on: ubuntu-latest
+    if: ${{needs.get-notifications.outputs.notifications != '[]'}}
     name: ${{ join(matrix.notif.watchers.*.email,'; ') }}
     strategy:
       matrix:
