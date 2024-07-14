@@ -52447,25 +52447,30 @@ function check(context, options) {
         core.debug(JSON.stringify(watchers, ['user', 'patterns', 'login']));
         core.info(`Comparing ${shaFrom}...${shaTo}`);
         let commits = [];
-        let commitsIter = octokit.paginate.iterator(octokit.rest.repos.compareCommits, { owner, repo, base: shaFrom, head: shaTo, per_page: PAGE_SIZE });
-        try {
-            for (var _f = true, commitsIter_1 = __asyncValues(commitsIter), commitsIter_1_1; commitsIter_1_1 = yield commitsIter_1.next(), _a = commitsIter_1_1.done, !_a; _f = true) {
-                _c = commitsIter_1_1.value;
-                _f = false;
-                let { data } = _c;
-                (_d = context.compareLink) !== null && _d !== void 0 ? _d : (context.compareLink = data.html_url);
-                commits.push(...(_e = data.commits.map(c => c.sha)) !== null && _e !== void 0 ? _e : []);
-                if (commits.at(-1) === shaTo) {
-                    break;
+        if (shaFrom === '0000000000000000000000000000000000000000') {
+            core.info(`Unusable 'shaFrom' value (probably new branch was created).`);
+        }
+        else {
+            let commitsIter = octokit.paginate.iterator(octokit.rest.repos.compareCommits, { owner, repo, base: shaFrom, head: shaTo, per_page: PAGE_SIZE });
+            try {
+                for (var _f = true, commitsIter_1 = __asyncValues(commitsIter), commitsIter_1_1; commitsIter_1_1 = yield commitsIter_1.next(), _a = commitsIter_1_1.done, !_a; _f = true) {
+                    _c = commitsIter_1_1.value;
+                    _f = false;
+                    let { data } = _c;
+                    (_d = context.compareLink) !== null && _d !== void 0 ? _d : (context.compareLink = data.html_url);
+                    commits.push(...(_e = data.commits.map(c => c.sha)) !== null && _e !== void 0 ? _e : []);
+                    if (commits.at(-1) === shaTo) {
+                        break;
+                    }
                 }
             }
-        }
-        catch (e_1_1) { e_1 = { error: e_1_1 }; }
-        finally {
-            try {
-                if (!_f && !_a && (_b = commitsIter_1.return)) yield _b.call(commitsIter_1);
+            catch (e_1_1) { e_1 = { error: e_1_1 }; }
+            finally {
+                try {
+                    if (!_f && !_a && (_b = commitsIter_1.return)) yield _b.call(commitsIter_1);
+                }
+                finally { if (e_1) throw e_1.error; }
             }
-            finally { if (e_1) throw e_1.error; }
         }
         let notifications = [];
         for (let sha of commits) {

@@ -14,14 +14,17 @@ export async function check(context: Context, options: Options): Promise<Notif.N
 	core.debug(JSON.stringify(watchers, ['user', 'patterns', 'login']));
 
 	core.info(`Comparing ${shaFrom}...${shaTo}`);
-
 	let commits: string[] = [];
-	let commitsIter = octokit.paginate.iterator(octokit.rest.repos.compareCommits, { owner, repo, base: shaFrom, head: shaTo, per_page: PAGE_SIZE });
-	for await (let { data } of commitsIter) {
-		context.compareLink ??= data.html_url;
-		commits.push(...data.commits.map(c => c.sha) ?? []);
-		if (commits.at(-1) === shaTo) {
-			break;
+	if (shaFrom === '0000000000000000000000000000000000000000') {
+		core.info(`Unusable 'shaFrom' value (probably new branch was created).`);
+	} else {
+		let commitsIter = octokit.paginate.iterator(octokit.rest.repos.compareCommits, { owner, repo, base: shaFrom, head: shaTo, per_page: PAGE_SIZE });
+		for await (let { data } of commitsIter) {
+			context.compareLink ??= data.html_url;
+			commits.push(...data.commits.map(c => c.sha) ?? []);
+			if (commits.at(-1) === shaTo) {
+				break;
+			}
 		}
 	}
 
