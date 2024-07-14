@@ -216,6 +216,7 @@ function getInput(name, options) {
     }
     return val.trim();
 }
+
 exports.getInput = getInput;
 /**
  * Gets the values of an multiline input.  Each value is also trimmed.
@@ -52539,8 +52540,8 @@ function aggregateCommits(context, options, notifications) {
                     commit: {
                         html_url: context.compareLink,
                         commit: {
-                            author: { name: '[Multiple authors]' },
-                            committer: { name: '[Multiple committers]' },
+                            author: aggregateUsers(n.map(n => n.commit.commit.author)),
+                            committer: aggregateUsers(n.map(n => n.commit.commit.committer)),
                             message: `[${n.length} commits]`,
                         },
                         sha: '0000000000000000000000000000000000000000',
@@ -52596,6 +52597,22 @@ function stripUser(u) {
         gravatar_id: u.gravatar_id,
         html_url: u.html_url
     };
+}
+function aggregateUsers(users) {
+    if (users.length === 1)
+        return users[0];
+    let uniqueNames = new Set(users.map(u => u.name));
+    let unique = [...uniqueNames].map(un => users.find(u => u.name === un));
+    if (unique.length > 1) {
+        return ({
+            name: unique.map(u => u.name).join(', '),
+            email: unique.map(u => u.email).join(';'),
+        });
+    }
+    else {
+        let u = { name: users[0].name, email: users[0].email };
+        return u;
+    }
 }
 
 

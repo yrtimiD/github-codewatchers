@@ -1,6 +1,6 @@
 {
   "name": "github-codewatchers",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "GitHub Action that triggers notifications about changed files to a list of subscribers",
   "main": "dist/index.js",
   "scripts": {
